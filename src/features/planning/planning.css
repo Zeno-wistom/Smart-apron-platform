@@ -455,3 +455,17 @@
 @media (max-width: 780px) {
   .planning-workspace, .planning-context-body { grid-template-columns: 1fr; }
 }
+
+/* Guided planning: one continuous page, with the current editor in focus. */
+.step-list-panel { position: static; }
+.step-list { max-height: none; overflow: visible; }
+.planning-workspace.is-empty { grid-template-columns: minmax(0, 1fr); }
+.planning-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; padding: 16px 20px; }
+.planning-summary > div { min-width: 0; display: grid; gap: 4px; }
+.planning-summary span { color: var(--color-text-secondary); font-size: 12px; }
+.planning-summary strong { font-size: 13px; line-height: 1.5; font-weight: 500; }
+.planning-summary details { grid-column: 1 / -1; font-size: 13px; color: var(--color-text-secondary); }
+.planning-summary summary { cursor: pointer; color: var(--color-primary); }
+.summary-details { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 12px; }
+.empty-step-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+@media (max-width: 780px) { .planning-summary { grid-template-columns: 1fr; } .summary-details { align-items: flex-start; flex-direction: column; } }

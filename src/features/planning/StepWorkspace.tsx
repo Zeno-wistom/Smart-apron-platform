@@ -4,7 +4,6 @@ import {
   CircleCheck,
   CircleDashed,
   ListPlus,
-  LockKeyhole,
   Plus,
   Sparkles,
   Undo2,
@@ -35,6 +34,7 @@ export function StepWorkspace({ session }: { session: LessonSession }) {
   const [info, setInfo] = useState<string>();
   const [candidate, setCandidate] = useState<{ stepId: string; suggestion: StepSuggestion }>();
   const requestRef = useRef(0);
+  const busyRef = useRef(false);
   const sessionRef = useRef(session);
   const lastOperationRef = useRef<GenerationKind>("next");
   sessionRef.current = session;
@@ -77,7 +77,8 @@ export function StepWorkspace({ session }: { session: LessonSession }) {
   }
 
   async function runGeneration(kind: GenerationKind) {
-    if (locked) return;
+    if (locked || busyRef.current) return;
+    busyRef.current = true;
     const requestId = ++requestRef.current;
     const baseRevision = session.planRevision;
     const targetStepId = selectedStep?.id;
@@ -120,11 +121,12 @@ export function StepWorkspace({ session }: { session: LessonSession }) {
         setError(reason instanceof Error ? reason.message : "模拟生成失败，请重试。 ");
       }
     } finally {
-      if (requestId === requestRef.current) setLoadingKind(undefined);
+      if (requestId === requestRef.current) { busyRef.current = false; setLoadingKind(undefined); }
     }
   }
 
   function addCustomStep() {
+    if (locked || busyRef.current) return;
     const step = {
       id: createId("step"),
       title: "",
@@ -143,11 +145,11 @@ export function StepWorkspace({ session }: { session: LessonSession }) {
       <div className="workspace-toolbar">
         <div>
           <h2>教学环节编排</h2>
-          <p>逐个编辑并确认教学环节。至少确认 3 个环节后，可进入故事配置。</p>
+          <p>逐个编辑并确认教学环节；本演示至少需要 3 个已确认环节。</p>
         </div>
         <div className="button-row">
           <Button variant="ghost" disabled={!canUndo(session.id)} icon={<Undo2 aria-hidden="true" />} onClick={() => undo(session.id)}>撤销</Button>
-          {planningDone && <Link className="button button-primary" to={`/sessions/${session.id}/experience`}>下一步：故事与围裙<ArrowRight aria-hidden="true" /></Link>}
+
         </div>
       </div>
 
@@ -155,8 +157,14 @@ export function StepWorkspace({ session }: { session: LessonSession }) {
       {notice && <Notice variant="warning" title="已保护教师当前内容">{notice}</Notice>}
       {info && <Notice variant="success">{info}</Notice>}
 
-      <div className="planning-workspace">
-        <aside className="panel step-list-panel">
+      <div className="planning-summary panel">
+        <div><span>教学目标</span><strong>{session.goalSet.items.map((goal) => goal.text).join("；") || "未填写"}</strong></div>
+        <div><span>儿童限制</span><strong>{session.goalSet.constraints.filter((item) => item.text.trim()).map((item) => item.text).join("；") || "暂无限制"}</strong></div>
+        <details><summary>查看目标、限制与备注</summary><div className="summary-details"><p><strong>教师备注：</strong>{session.goalSet.teacherNotes || "未填写"}</p><Button disabled={locked} onClick={() => update({ type: "goals/unlock", sessionId: session.id })}>返回修改目标</Button></div></details>
+      </div>
+      {planningDone && <div className="next-stage"><div><strong>教学环节已准备完成</strong><p>接下来为这些环节编写故事，并设置模拟围裙反馈。</p></div><Link className="button button-primary" to={`/sessions/${session.id}/experience`}>进入故事与围裙设计<ArrowRight aria-hidden="true" /></Link></div>}
+      <div className={session.steps.length ? "planning-workspace" : "planning-workspace is-empty"}>
+        {session.steps.length > 0 && <aside className="panel step-list-panel">
           <div className="panel-header">
             <div><h2>教学步骤</h2><p>{session.steps.length === 0 ? "还没有环节，先生成或手动添加" : `共 ${session.steps.length} 个环节，已确认 ${session.steps.filter((step) => step.status === "confirmed").length} 个`}</p></div>
             <Badge>{session.steps.length === 0 ? "尚未开始" : session.steps.every((step) => step.status === "confirmed") ? "全部已确认" : `${session.steps.filter((step) => step.status !== "confirmed").length} 个待确认`}</Badge>
@@ -177,12 +185,12 @@ export function StepWorkspace({ session }: { session: LessonSession }) {
             {session.steps.length === 0 && <p className="step-list-empty">还没有教学环节。可生成、补全或手动添加。</p>}
           </div>
           <div className="step-list-actions">
-            <Button full variant="primary" disabled={locked || session.steps.length >= DEMO_STEP_COUNT} loading={loadingKind === "next"} icon={<Sparkles aria-hidden="true" />} onClick={() => runGeneration("next")}>生成下一步</Button>
+            <Button full variant={!planningDone && selectedStep?.status === "confirmed" ? "primary" : "secondary"} disabled={locked || !!loadingKind || session.steps.length >= DEMO_STEP_COUNT} loading={loadingKind === "next"} icon={<Sparkles aria-hidden="true" />} onClick={() => runGeneration("next")}>生成下一步</Button>
             <p className="generation-hint">一键补全只添加缺少的草案，不覆盖已有草案或已确认环节；每个草案仍需教师确认。</p>
-            <Button full disabled={locked || session.steps.length >= DEMO_STEP_COUNT} loading={loadingKind === "complete"} icon={<WandSparkles aria-hidden="true" />} onClick={() => runGeneration("complete")}>一键补全剩余</Button>
-            <Button full variant="ghost" disabled={locked} icon={<Plus aria-hidden="true" />} onClick={addCustomStep}>手动添加环节</Button>
+            <Button full disabled={locked || !!loadingKind || session.steps.length >= DEMO_STEP_COUNT} loading={loadingKind === "complete"} icon={<WandSparkles aria-hidden="true" />} onClick={() => runGeneration("complete")}>一键补全剩余</Button>
+            <Button full variant="ghost" disabled={locked || !!loadingKind} icon={<Plus aria-hidden="true" />} onClick={addCustomStep}>手动添加环节</Button>
           </div>
-        </aside>
+        </aside>}
 
         <div className="step-editor-slot">
             {candidate && candidate.stepId === selectedStep?.id && (
@@ -224,41 +232,15 @@ export function StepWorkspace({ session }: { session: LessonSession }) {
               <EmptyState
                 icon={<ListPlus aria-hidden="true" />}
                 title="从第一个教学环节开始"
-                description="模拟 AI 会携带当前目标、限制和教师备注；生成后可编辑，确认后才锁定。"
-                action={<Button variant="primary" loading={loadingKind === "next"} onClick={() => runGeneration("next")}>生成第一个环节</Button>}
+                description="根据已确认的目标和限制，生成一份模拟草案，或由教师手动填写。"
+                action={<div className="empty-step-actions"><Button variant="primary" disabled={locked || !!loadingKind} loading={loadingKind === "next"} onClick={() => runGeneration("next")}>生成第一个教学环节</Button><Button disabled={locked || !!loadingKind} onClick={addCustomStep}>手动添加环节</Button></div>}
               />
             </section>
           )}
         </div>
 
-        <aside className="panel planning-context-panel">
-          <div className="panel-header">
-            <div><h2>目标与限制</h2><p>所有模拟生成的只读上下文</p></div>
-            <LockKeyhole aria-label="已锁定" />
-          </div>
-          <div className="planning-context-body">
-            <section>
-              <div className="context-section-title"><h3>已确认教学目标</h3><Badge variant="success">教师已确认</Badge></div>
-              <ol className="context-goal-list">{session.goalSet.items.map((goal) => <li key={goal.id}>{goal.text}</li>)}</ol>
-            </section>
-            <section>
-              <h3>儿童限制</h3>
-              <ul className="quiet-list">{session.goalSet.constraints.filter((item) => item.text.trim()).map((item) => <li key={item.id}>{item.text}</li>)}</ul>
-            </section>
-            <section><h3>教师备注</h3><p className="context-note">{session.goalSet.teacherNotes || "未填写备注"}</p></section>
-            <Button full disabled={locked} onClick={() => update({ type: "goals/unlock", sessionId: session.id })}>返回修改目标</Button>
 
-
-            {!candidate && (
-              <div className="ai-boundary-note">
-                <SimulationBadge label="模拟 AI" />
-                <p>每次生成都会携带当前目标、限制、步骤和教案版本。慢响应或失败不会覆盖教师的新编辑。</p>
-              </div>
-            )}
-          </div>
-        </aside>
       </div>
-      {planningDone && <div className="next-stage"><div><strong>教学环节已确认</strong><p>接下来为这些环节编写故事，并设置模拟围裙反馈。</p></div><Link className="button button-primary" to={`/sessions/${session.id}/experience`}>下一步：故事与围裙<ArrowRight aria-hidden="true" /></Link></div>}
     </div>
   );
 }

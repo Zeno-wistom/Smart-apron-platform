@@ -1,0 +1,99 @@
+/*
+ * Hark 设计令牌
+ * 方向：安静的“港湾”——暖纸色底、深海绿主色、灯塔琥珀专属于 AI 建议。
+ * 规则：
+ *  - 主色只用于主要操作与当前选中；
+ *  - 琥珀色只表示“AI 候选/建议”，教师自己的内容永远不用琥珀；
+ *  - 状态同时用图标 + 文字表达，不只靠颜色。
+ */
+:root {
+  /* 中性色 */
+  --bg: #f5f3ee;
+  --surface: #ffffff;
+  --surface-2: #faf9f6;
+  --surface-3: #f0ede6;
+  --line: #e5e0d6;
+  --line-strong: #d3ccbf;
+  --ink: #1d2421;
+  --ink-2: #49524d;
+  --ink-3: #737b76;
+  --ink-4: #9aa19c;
+
+  /* 主色：深海绿 */
+  --primary: #2e5a4f;
+  --primary-hover: #254b42;
+  --primary-press: #1e3f37;
+  --primary-soft: #e8efec;
+  --primary-line: #bcd0c9;
+  --primary-ink: #1f4038;
+
+  /* AI 候选：灯塔琥珀 */
+  --ai: #8a5a12;
+  --ai-strong: #b97a1c;
+  --ai-soft: #fbf4e6;
+  --ai-line: #e9cf9c;
+
+  /* 状态 */
+  --ok: #2c6e48;
+  --ok-soft: #e7f2eb;
+  --warn: #a4471a;
+  --warn-soft: #fbece3;
+  --warn-line: #f0c6ae;
+  --danger: #b0281c;
+  --danger-soft: #fbe9e7;
+  --sim: #4f5f6e;
+  --sim-soft: #eef1f4;
+  --sim-line: #b9c3cc;
+
+  /* 字体 */
+  --font: "Inter", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  --mono: "JetBrains Mono", "SFMono-Regular", ui-monospace, Menlo, monospace;
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-15: 15px;
+  --fs-16: 16px;
+  --fs-18: 18px;
+  --fs-20: 20px;
+  --fs-24: 24px;
+  --lh: 1.6;
+
+  /* 尺寸：控件与导航统一高度 */
+  --h-sm: 28px;
+  --h-md: 34px;
+  --h-lg: 40px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-pill: 999px;
+
+  /* 间距（4 的倍数） */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s8: 32px;
+  --s10: 40px;
+
+  --sidebar-w: 224px;
+  --topbar-h: 56px;
+
+  --shadow-1: 0 1px 2px rgba(29, 36, 33, 0.05);
+  --shadow-2: 0 4px 16px rgba(29, 36, 33, 0.08), 0 1px 2px rgba(29, 36, 33, 0.06);
+  --shadow-3: 0 18px 48px rgba(29, 36, 33, 0.18);
+  --focus: 0 0 0 3px rgba(46, 90, 79, 0.28);
+
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --t-fast: 120ms;
+  --t-med: 200ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-fast: 0ms;
+    --t-med: 0ms;
+  }
+}

@@ -4,6 +4,7 @@ import { ArrowRight, CircleDashed, Lock, PencilLine, Plus, Sparkles, Target, Tri
 import { useRequests, useStore } from "../../app/store";
 import { useAi } from "../../app/useAi";
 import { Button, Progress, SimTag, cx } from "../../components/ui";
+import { adoptRejection } from "../../domain/reducer";
 import { planProgress } from "../../domain/checks";
 import { ROLE_LABEL } from "../../domain/fixtures";
 import type { Activity, ChildProfile, Step } from "../../domain/types";
@@ -34,8 +35,6 @@ export function PlanStage({ activity, child }: { activity: Activity; child: Chil
   const editorRef = useRef<HTMLDivElement>(null);
   const focusKey = focus.kind === "goal" ? "goal" : focus.step.id;
   useEffect(() => {
-    editorRef.current?.scrollTo?.({ top: 0 });
-    window.scrollTo({ top: 0 });
     editorRef.current?.classList.remove("flash");
     void editorRef.current?.offsetWidth;
     editorRef.current?.classList.add("flash");
@@ -45,6 +44,7 @@ export function PlanStage({ activity, child }: { activity: Activity; child: Chil
     <div className="workspace">
       <Outline activity={activity} focus={focus} onSelect={go} />
       <main className="editor" ref={editorRef} aria-label="当前编辑">
+        <BatchPreview activity={activity} />
         {focus.kind === "goal" ? (
           <GoalEditor activity={activity} child={child} onNext={() => go(d.steps[0].id)} />
         ) : (
@@ -174,7 +174,7 @@ function Outline({ activity, focus, onSelect }: { activity: Activity; focus: Foc
                   {confirmed > 0 && <b>{confirmed} 个已确认</b>}，
                 </>
               )}
-              候选需逐个采纳，不会直接写入。
+              候选可集中预览并采纳为草稿，不会直接确认。
             </p>
           )}
           <Button
@@ -218,4 +218,17 @@ function OlState({ status }: { status: "empty" | "draft" | "confirmed" }) {
       <CircleDashed className="ico" />
     </span>
   );
+}
+
+function BatchPreview({ activity }: { activity: Activity }) {
+  const { dispatch } = useStore();
+  const candidates = activity.draft.steps.filter((step) => step.candidate?.kind === "complete");
+  if (!candidates.length) return null;
+  const valid = candidates.filter((step) => !adoptRejection(activity.draft, activity.draftLocked, step));
+  return <section className="batch-preview" aria-label="一键补全候选预览"><div className="row"><h2 className="grow">一键补全候选 · {candidates.length} 个</h2><SimTag /></div>
+    <p className="small muted">请先检查建议；采纳后仍是草稿，需要教师逐项确认。</p>
+    <details><summary>查看全部候选内容</summary>{candidates.map((step) => <article key={step.id}><strong>{step.candidate!.fields.title}</strong><p>{step.candidate!.fields.teacherScript}</p><p>{step.candidate!.fields.childInteraction}</p><p>{step.candidate!.fields.observe}</p><p>{step.candidate!.fields.minutes} 分钟</p>{adoptRejection(activity.draft, activity.draftLocked, step) && <p className="warn-ink">不可采纳：{adoptRejection(activity.draft, activity.draftLocked, step)}</p>}</article>)}</details>
+    <Button variant="ai" disabled={!valid.length} onClick={() => dispatch({type:"step/adopt-complete",activityId:activity.id})} data-testid="adopt-all-steps">采纳 {valid.length} 个有效候选为草稿</Button>
+    {valid.length !== candidates.length && <p className="small warn-ink">{candidates.length - valid.length} 个候选已过期或有冲突，请逐项处理。</p>}
+  </section>;
 }

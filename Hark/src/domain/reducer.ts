@@ -41,6 +41,7 @@ export type Action =
   | { type: "notes/edit"; activityId: string; notes: string }
   | { type: "step/edit"; activityId: string; stepId: string; patch: Partial<StepFields> }
   | { type: "step/candidate"; activityId: string; stepId: string; candidate: Candidate }
+  | { type: "step/adopt-complete"; activityId: string }
   | { type: "step/adopt"; activityId: string; stepId: string }
   | { type: "step/discard"; activityId: string; stepId: string }
   | { type: "step/confirm"; activityId: string; stepId: string }
@@ -63,6 +64,7 @@ export type Action =
   | { type: "apron/accept"; activityId: string; sceneId: string }
   | { type: "apron/dismiss"; activityId: string; sceneId: string }
   | { type: "apron/toggle"; activityId: string; sceneId: string; cueId: string }
+  | { type: "apron/accept-safe-and-confirm"; activityId: string }
   | { type: "apron/confirm"; activityId: string }
   | { type: "apron/unlock"; activityId: string }
   | { type: "plan/approve"; activityId: string; versionId: string; at: string }
@@ -288,6 +290,18 @@ export function reducer(data: AppData, action: Action): AppData {
         return a;
       });
 
+    case "step/adopt-complete":
+      return editDraft(data, action.activityId, (d, a) => {
+        const valid = d.steps.filter((step) => step.candidate?.kind === "complete" && step.status === "empty" && !stepHasContent(step.fields) && !adoptRejection(d, a.draftLocked, step));
+        if (!valid.length) return false;
+        for (const s of valid) {
+          const c = s.candidate!;
+          s.fields = { ...c.fields }; s.status = "draft"; s.source = "ai"; s.rev += 1;
+          s.basedOnGoalRev = c.basedOnGoalRev; s.needsReview = undefined; s.candidate = undefined;
+        }
+        markStoryForSteps(d);
+      });
+
     case "step/adopt":
       return editDraft(data, action.activityId, (d, a) => {
         const s = findStep(d, action.stepId);
@@ -478,6 +492,16 @@ export function reducer(data: AppData, action: Action): AppData {
         const sc = sceneOf(d, action.sceneId);
         if (!sc) return false;
         sc.cueIds = sc.cueIds.includes(action.cueId) ? sc.cueIds.filter((c) => c !== action.cueId) : [...sc.cueIds, action.cueId];
+      });
+
+    case "apron/accept-safe-and-confirm":
+      return editDraft(data, action.activityId, (d) => {
+        if (!d.story || d.story.apronConfirmed) return false;
+        const pending = d.story.scenes.filter((scene) => scene.suggestedCueIds);
+        if (!pending.length || pending.some((scene) => scene.cueIds.length > 0 && JSON.stringify(scene.cueIds) !== JSON.stringify(scene.suggestedCueIds))) return false;
+        for (const scene of pending) { scene.cueIds = [...scene.suggestedCueIds!]; scene.suggestedCueIds = undefined; }
+        if (blockingIssues(d).some((issue) => issue.id.startsWith("scene-conflict"))) return false;
+        d.story.apronConfirmed = true;
       });
 
     case "apron/confirm":

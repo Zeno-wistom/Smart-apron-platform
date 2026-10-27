@@ -35,10 +35,9 @@ export function StoryStage({ activity, child }: { activity: Activity; child: Chi
   const raw = params.get("focus");
   const scene = useMemo(() => (raw?.startsWith("scene-") ? story?.scenes.find((s) => s.id === raw.slice(6)) : undefined), [raw, story]);
   const go = (f: "story" | string) => setParams({ focus: f === "story" ? "story" : `scene-${f}` });
-  const stepsReady = d.goal.confirmed && d.steps.every((s) => s.status === "confirmed");
+  const stepsReady = d.goal.confirmed && d.steps.every((s) => s.status === "confirmed" && !s.needsReview);
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
-    window.scrollTo({ top: 0 });
     ref.current?.classList.remove("flash");
     void ref.current?.offsetWidth;
     ref.current?.classList.add("flash");
@@ -604,6 +603,8 @@ function CheckPanel({ activity, onFocusScene }: { activity: Activity; onFocusSce
   const conflicted = st?.scenes.filter((s) => sceneConflicts(s, d.constraints).length > 0) ?? [];
   const unset = st?.scenes.filter((s) => s.cueIds.length === 0) ?? [];
   const suggestions = st?.scenes.filter((s) => s.suggestedCueIds) ?? [];
+  const safeSuggestions = suggestions.every((scene) => !scene.cueIds.length || JSON.stringify(scene.cueIds) === JSON.stringify(scene.suggestedCueIds));
+  const suggestedConflicts = suggestions.some((scene) => sceneConflicts({ ...scene, cueIds: scene.suggestedCueIds ?? scene.cueIds }, d.constraints).length > 0);
   const storyBlock = st && (st.needsReview || st.scenes.some((s) => !s.node.prompt.trim() || !s.narration.trim()));
 
   return (
@@ -666,14 +667,17 @@ function CheckPanel({ activity, onFocusScene }: { activity: Activity; onFocusSce
                   按限制匹配全部场景
                 </Button>
                 {errors[key] && <InlineError text={errors[key]!} onRetry={() => ai.suggestCues()} onClose={() => clearError(key)} />}
-                {suggestions.length > 0 && (
+                {suggestions.length > 0 && !safeSuggestions && <p className="small warn-ink">部分建议会替换已有选择，请逐场景检查并决定。</p>}
+                {suggestedConflicts && <p className="small warn-ink">建议与当前限制冲突，请逐场景调整。</p>}
+                {suggestions.length > 0 && safeSuggestions && (
                   <Button
                     size="sm"
                     icon={CheckCheck}
-                    onClick={() => suggestions.forEach((s) => dispatch({ type: "apron/accept", activityId: id, sceneId: s.id }))}
+                    disabled={conflicted.length > 0 || suggestedConflicts}
+                    onClick={() => dispatch({ type: "apron/accept-safe-and-confirm", activityId: id })}
                     data-testid="accept-all-cues"
                   >
-                    采纳全部 {suggestions.length} 条建议
+                    采纳 {suggestions.length} 条建议并确认反馈
                   </Button>
                 )}
                 <Button

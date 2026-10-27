@@ -236,3 +236,41 @@ describe("本地存储", () => {
     expect(load(s).status).toBe("corrupt");
   });
 });
+
+
+describe("批量采纳保护", () => {
+  it("只把有效的补全候选写成草稿，不覆盖已确认、教师草稿或过期候选", () => {
+    const t = setup(); confirmGoal(t); const steps = t.get().draft.steps;
+    t.run({type:"step/edit",activityId:t.id,stepId:steps[0].id,patch:fields("确认内容")});
+    t.run({type:"step/confirm",activityId:t.id,stepId:steps[0].id});
+    t.run({type:"step/edit",activityId:t.id,stepId:steps[1].id,patch:fields("教师草稿")});
+    for (const s of t.get().draft.steps.slice(2)) t.run({type:"step/candidate",activityId:t.id,stepId:s.id,candidate:cand(s.rev,t.get().draft.goal.rev,"complete")});
+    t.run({type:"step/edit",activityId:t.id,stepId:steps[2].id,patch:{title:"候选之后的编辑"}});
+    t.run({type:"step/adopt-complete",activityId:t.id});
+    const after=t.get().draft.steps;
+    expect(after[0].fields.title).toBe("确认内容"); expect(after[0].status).toBe("confirmed");
+    expect(after[1].fields.title).toBe("教师草稿"); expect(after[2].fields.title).toBe("候选之后的编辑");
+    expect(after[3].fields.title).toBe("AI 标题"); expect(after[3].status).toBe("draft");
+  });
+});
+
+
+describe("反馈批量确认保护", () => {
+  it("已有教师选择或与限制冲突时，批量操作不能覆盖或确认", async () => {
+    const t = setup(); confirmGoal(t); const d = t.get().draft;
+    const story = await generateStory(seedChild, d.goal.text, d.steps, d.constraints);
+    t.run({type:"story/candidate",activityId:t.id,candidate:{requestId:"x",story,basedOnSig:stepsSignature(d.steps),createdAt:""}});
+    t.run({type:"story/adopt",activityId:t.id}); const id = t.get().draft.story!.scenes[0].id;
+    t.run({type:"apron/toggle",activityId:t.id,sceneId:id,cueId:"cue-turn-card"});
+    t.run({type:"apron/suggest",activityId:t.id,suggestions:{[id]:["cue-lighthouse-glow"]}});
+    t.run({type:"apron/accept-safe-and-confirm",activityId:t.id});
+    expect(t.get().draft.story!.scenes[0].cueIds).toEqual(["cue-turn-card"]);
+    expect(t.get().draft.story!.apronConfirmed).toBe(false);
+    t.run({type:"apron/dismiss",activityId:t.id,sceneId:id});
+    t.run({type:"apron/toggle",activityId:t.id,sceneId:id,cueId:"cue-turn-card"});
+    t.run({type:"apron/suggest",activityId:t.id,suggestions:{[id]:["cue-horn"]}});
+    t.run({type:"apron/accept-safe-and-confirm",activityId:t.id});
+    expect(t.get().draft.story!.scenes[0].cueIds).toEqual([]);
+    expect(t.get().draft.story!.apronConfirmed).toBe(false);
+  });
+});

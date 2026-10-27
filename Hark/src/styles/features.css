@@ -370,10 +370,9 @@ ul.plain {
 .outline,
 .context {
   min-height: calc(100vh - var(--topbar-h) - 52px);
-  position: sticky;
-  top: var(--topbar-h);
-  max-height: calc(100vh - var(--topbar-h));
-  overflow: auto;
+  position: static;
+  max-height: none;
+  overflow: visible;
   padding: var(--s5) var(--s4) var(--s6);
 }
 .outline {
@@ -1676,3 +1675,13 @@ ul.plain {
     display: none;
   }
 }
+
+.option-select { width: 100%; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.option-select:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.option-detail { display: block; }
+.option-choice { white-space: nowrap; font-size: var(--fs-13); }
+.batch-preview { margin: var(--s5) var(--s8) 0; padding: var(--s4); border: 1px solid var(--ai-line); border-radius: var(--r-lg); background: var(--ai-soft); }
+.batch-preview details { margin: 10px 0; }
+.batch-preview summary { cursor: pointer; }
+.batch-preview article { padding: 10px 0; border-bottom: 1px solid var(--ai-line); }
+.batch-preview article p { margin: 5px 0; }

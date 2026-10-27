@@ -108,7 +108,7 @@ export function useAi(activityId: string) {
       toast(
         skipped.length
           ? `已生成 ${ok} 个候选；${skipped.length} 个未写入（${skipped[0]}）`
-          : `已为 ${ok} 个空白环节生成候选，逐个审核后再采纳`,
+          : `已为 ${ok} 个空白环节生成候选，可集中预览后采纳为草稿`,
         skipped.length ? "warn" : "success",
       );
     } catch (e) {
@@ -140,11 +140,14 @@ export function useAi(activityId: string) {
     if (!d.story) return;
     const id = req.begin(key, "正在匹配模拟反馈");
     const rev = d.story.rev;
+    const goalRev = d.goal.rev;
+    const choices = JSON.stringify(d.story.scenes.map((scene) => [scene.id, scene.cueIds]));
     try {
       const suggestions = await ai.suggestCues(d.story, d.steps, d.constraints);
       if (!req.end(key, id)) return;
-      if (ctx().d.story?.rev !== rev) {
-        toast("匹配结果未写入：期间故事已修改，请重新匹配", "warn");
+      const current = ctx().d;
+      if (current.story?.rev !== rev || current.goal.rev !== goalRev || JSON.stringify(current.story?.scenes.map((scene) => [scene.id, scene.cueIds])) !== choices) {
+        toast("匹配结果未写入：期间故事、限制或反馈选择已修改，请重新匹配", "warn");
         return;
       }
       dispatch({ type: "apron/suggest", activityId, suggestions });

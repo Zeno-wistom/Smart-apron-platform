@@ -35,7 +35,7 @@ export function GoalEditor({ activity, child, onNext }: { activity: Activity; ch
   const reviewCount = d.steps.filter((s) => s.needsReview).length;
 
   const pickOption = (o: GoalOption) => {
-    if (g.text.trim() && g.text !== o.text) setReplace(o);
+    if ((g.source === "teacher" || g.source === "ai-edited") && (g.text.trim() || g.observe.trim()) && (g.text !== o.text || g.observe !== o.observe)) setReplace(o);
     else apply(o);
   };
   const apply = (o: GoalOption) => {
@@ -146,21 +146,11 @@ export function GoalEditor({ activity, child, onNext }: { activity: Activity; ch
               {d.goalOptions.map((o) => {
                 const current = o.text === g.text;
                 return (
-                  <li key={o.id} className={cx("option", current && "on")}>
-                    <div className="grow">
-                      <div className="option-title">{o.text}</div>
-                      <div className="small muted">{o.rationale}</div>
-                      <div className="small option-observe">记录：{o.observe}</div>
-                    </div>
-                    {current ? (
-                      <Tag tone="ai" icon={Check}>
-                        已使用
-                      </Tag>
-                    ) : (
-                      <Button size="sm" variant="secondary" onClick={() => pickOption(o)}>
-                        使用此目标
-                      </Button>
-                    )}
+                  <li key={o.id}>
+                    <button type="button" className={cx("option", "option-select", current && "on")} aria-pressed={current} onClick={() => pickOption(o)}>
+                      <span className="grow"><span className="option-title">{o.text}</span><span className="small muted option-detail">{o.rationale}</span><span className="small option-observe option-detail">记录：{o.observe}</span></span>
+                      <span className="option-choice">{current ? "已选择 ✓" : "选择"}</span>
+                    </button>
                   </li>
                 );
               })}
@@ -194,8 +184,8 @@ export function GoalEditor({ activity, child, onNext }: { activity: Activity; ch
           {g.confirmed ? "目标已确认。接下来逐个编排教学环节。" : "确认目标后，才能生成教学环节。"}
         </span>
         {!g.confirmed ? (
-          <Button variant="primary" icon={Check} disabled={!g.text.trim() || locked} onClick={() => dispatch({ type: "goal/confirm", activityId: id })} data-testid="confirm-goal">
-            确认目标
+          <Button variant="primary" icon={Check} disabled={!g.text.trim() || locked} onClick={() => { dispatch({ type: "goal/confirm", activityId: id }); onNext(); }} data-testid="confirm-goal">
+            确认目标并进入教学环节
           </Button>
         ) : (
           <Button variant="primary" iconRight={ArrowRight} onClick={onNext} data-testid="goto-steps">

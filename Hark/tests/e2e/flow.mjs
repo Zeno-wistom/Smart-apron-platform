@@ -76,13 +76,20 @@ try {
   await page.locator(".inline-error").getByRole("button", { name: "重试" }).click();
   await page.locator(".option").first().waitFor();
   check("重试后获得目标推荐", (await page.locator(".option").count()) === 3);
-  await page.locator(".option").first().getByRole("button", { name: "使用此目标" }).click();
+  await page.locator(".option").first().click();
+  await page.locator(".option").nth(1).click();
+  check("未改写的 AI 推荐可直接切换", (await page.getByRole("dialog").count()) === 0 && await page.locator(".option").nth(1).getAttribute("aria-pressed") === "true");
+  await page.locator("#goal-text").fill("教师原创目标");
+  await page.locator(".option").first().click();
+  check("切换推荐时保护教师原创目标", (await page.getByRole("dialog").count()) === 1 && (await page.locator("#goal-text").inputValue()) === "教师原创目标");
+  await page.getByRole("button", {name:"保留我的目标"}).click();
+  await page.locator(".option").first().click();
+  await page.getByRole("button", {name:"替换", exact:true}).click();
   const goal = await page.locator("#goal-text").inputValue();
   check("采纳推荐目标写入目标字段", goal.includes("轮流表达"), goal);
   await page.locator("#plan-notes").fill("先用手势指向轮流卡，再说“轮到你”");
   await shot("02-goal");
   await tid("confirm-goal").click();
-  await tid("goto-steps").click();
 
   /* ---------- 逐步生成 + 候选 ---------- */
   await tid("gen-step").click();
@@ -125,9 +132,12 @@ try {
   const dots = await page.locator(".ol-state.ai .ai-dot").count();
   check("一键补全只为空白环节生成候选", dots === 3, `${dots} 个候选`);
   check("一键补全不覆盖教师草稿", (await page.locator("#step-title").inputValue()) === "我在生成期间写的标题");
+  await page.locator('.batch-preview summary').click();
+  check("批量预览显示全部候选", (await page.locator('.batch-preview article').count()) === 3);
+  await tid("adopt-all-steps").click();
+  check("批量采纳不覆盖教师草稿", (await page.locator("#step-title").inputValue()) === "我在生成期间写的标题");
   await tid("confirm-step").click();
   for (let i = 0; i < 3; i++) {
-    await tid("adopt").click();
     await tid("confirm-step").click();
     await wait(80);
   }
@@ -158,7 +168,6 @@ try {
   const reviews = await page.locator(".ol-badge.s-review").count();
   check("修改目标后所有环节标记需复核", reviews === 5, `${reviews}`);
   await shot("05-needs-review");
-  await tid("goto-steps").click();
   for (let i = 0; i < 5; i++) {
     await tid("mark-reviewed").click();
     await wait(60);
@@ -189,7 +198,7 @@ try {
   await tid("accept-all-cues").click();
   check("模拟匹配不推荐冲突反馈", (await page.locator(".ol-state.warn").count()) === 0);
   await tid("confirm-story").click();
-  await tid("confirm-apron").click();
+  check("采纳建议同时确认反馈", (await tid("confirm-apron").count()) === 0);
   await shot("08-story-confirmed");
 
   /* ---------- 审核 ---------- */

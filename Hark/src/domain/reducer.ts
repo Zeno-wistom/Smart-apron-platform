@@ -28,6 +28,7 @@ import type {
 } from "./types";
 
 export type Action =
+  | { type:'plan/restore-edit'; activityId:string; draft:PlanDraft; expectedRevision:number; versionCount:number }
   | { type:'scene/add'; activityId:string; stepId:string; sceneId:string }
   | { type: 'lesson/candidate'; activityId: string; candidate: LessonCandidate }
   | { type: 'lesson/discard'; activityId: string }
@@ -200,6 +201,19 @@ function editableReflection(s: ClassSession): Reflection | null {
 
 export function reducer(data: AppData, action: Action): AppData {
   switch (action.type) {
+    case 'plan/restore-edit':
+      return withActivity(data,action.activityId,a=>{
+        if(a.draftLocked||a.draft.revision!==action.expectedRevision||a.versions.length!==action.versionCount||a.draft.basedOnVersionNo!==action.draft.basedOnVersionNo)return null;
+        const current=a.draft,restored=structuredClone(action.draft);
+        const goalChanged=JSON.stringify([current.goal.text,current.goal.observe,current.constraints])!==JSON.stringify([restored.goal.text,restored.goal.observe,restored.constraints]);
+        restored.revision=current.revision+1;
+        restored.goal.rev=Math.max(current.goal.rev,restored.goal.rev)+1;
+        restored.goal.confirmed=false;
+        restored.lessonCandidate=undefined;restored.storyCandidate=undefined;
+        for(const s of restored.steps){s.rev=Math.max(s.rev,current.steps.find(x=>x.id===s.id)?.rev??0)+1;s.candidate=undefined;if(s.status==='confirmed')s.status='draft';if(goalChanged&&s.status!=='empty')s.needsReview='撤销或重做更改了教学目标或限制';if(!s.needsReview)s.basedOnGoalRev=restored.goal.rev;}
+        if(restored.story){restored.story.confirmed=false;restored.story.apronConfirmed=false;restored.story.rev=Math.max(restored.story.rev,current.story?.rev??0)+1;for(const sc of restored.story.scenes)sc.suggestedCueIds=undefined;if(goalChanged)restored.story.needsReview='撤销或重做更改了教学目标或限制';}
+        a.draft=restored;return a;
+      });
     case 'scene/add':
       return editDraft(data,action.activityId,d=>{
         const s=findStep(d,action.stepId);

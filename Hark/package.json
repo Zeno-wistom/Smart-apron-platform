@@ -9,7 +9,7 @@
     "build": "tsc --noEmit -p tsconfig.json && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "e2e": "node tests/e2e/flow.mjs"
+    "e2e": "node tests/e2e/run.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.61.0",

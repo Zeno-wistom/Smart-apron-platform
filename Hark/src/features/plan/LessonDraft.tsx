@@ -92,6 +92,7 @@ export function LessonDraft({
     !activity.draftLocked &&
     !c;
   if (activity.draftLocked) return null;
+  if (!c && !busy && empty === 0 && d.story) return null;
   return (
     <section className="lesson-draft" aria-label="整课初稿">
       {!c ? (

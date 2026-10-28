@@ -1,7 +1,8 @@
-import { chromium } from "playwright";
+const BASE = process.env.BASE_URL ?? "http://127.0.0.1:5184";
+import { launchBrowser } from "./browser.mjs";
 import AxeBuilder from "@axe-core/playwright";
 import { readFileSync, writeFileSync } from "node:fs";
-const b = await chromium.launch({ channel: "msedge" });
+const b = await launchBrowser();
 const env = JSON.parse(readFileSync("tests/e2e/legacy-envelope.json", "utf8"));
 const id = env.data.activities[0].id;
 const audits = [];
@@ -19,10 +20,10 @@ for (const width of [1366, 390]) {
     "records",
     "children/child-xiaozhou",
   ]) {
-    await p.goto(`http://127.0.0.1:5184/?fast=1#/${route}`);
+    await p.goto(`${BASE}/?fast=1#/${route}`);
     await p.waitForTimeout(120);
     await p.waitForTimeout(250);
-const result = await new AxeBuilder({ page: p })
+    const result = await new AxeBuilder({ page: p })
       .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
       .analyze();
     audits.push({
@@ -45,10 +46,10 @@ const result = await new AxeBuilder({ page: p })
       result.violations.map((v) => `${v.impact}:${v.id}`).join(","),
     );
   }
-  await p.goto(`http://127.0.0.1:5184/?fast=1#/activities/${id}/plan`);
+  await p.goto(`${BASE}/?fast=1#/activities/${id}/plan`);
   await p.getByTestId("open-preflight").click();
   await p.waitForTimeout(250);
-const result = await new AxeBuilder({ page: p })
+  const result = await new AxeBuilder({ page: p })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
     .analyze();
   audits.push({ width, route: "preflight", violations: result.violations });
@@ -66,4 +67,3 @@ if (blocking.length) {
   console.error(`${blocking.length} critical/serious findings`);
   process.exitCode = 1;
 } else console.log("No critical/serious axe findings");
-

@@ -7,6 +7,7 @@ import { ROLE_LABEL, uid } from "../../domain/fixtures";
 import type { Activity, ChildProfile, StepFields } from "../../domain/types";
 import { GoalEditor } from "./GoalEditor";
 import { LessonDraft } from "./LessonDraft";
+import { useDraftHistory } from "./useDraftHistory";
 import { StepEditor } from "./StepEditor";
 import { SceneCard, StorylineView } from "../story/SceneCard";
 
@@ -20,17 +21,21 @@ export function PreparationWorkspace({
   const [params, setParams] = useSearchParams();
   const { dispatch, latest } = useStore();
   const d = activity.draft;
+  const history = useDraftHistory(activity);
   const [reference, setReference] = useState(false),
     [storyline, setStoryline] = useState(false),
     [affected, setAffected] = useState<number | null>(null),
-    [removing, setRemoving] = useState(false);
+    [removing, setRemoving] = useState(false),
+    [railOpen, setRailOpen] = useState(false);
   const raw = params.get("focus");
   const selected = raw?.startsWith("step-")
     ? d.steps.find((s) => s.id === raw.slice(5))
     : undefined;
   const index = selected ? d.steps.indexOf(selected) : -1;
-  const go = (id: string) =>
+  const go = (id: string) => {
+    setRailOpen(false);
     setParams({ focus: id === "goal" ? "goal" : `step-${id}` });
+  };
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [selected?.id]);
@@ -59,7 +64,19 @@ export function PreparationWorkspace({
   };
   return (
     <div className="preparation-workspace">
-      <aside className="step-rail" aria-label="环节轨道">
+      <aside className="step-rail" aria-label="环节轨道" data-open={railOpen}>
+        <Button
+          className="rail-toggle"
+          variant="ghost"
+          aria-expanded={railOpen}
+          onClick={() => setRailOpen((v) => !v)}
+        >
+          环节：
+          {selected
+            ? `${index + 1}. ${selected.fields.title.slice(0, 24) || ROLE_LABEL[selected.role]}`
+            : "教学目标"}{" "}
+          · {railOpen ? "收起" : "选择"}
+        </Button>
         <p className="eyebrow">本课结构</p>
         <button className={!selected ? "on" : ""} onClick={() => go("goal")}>
           教学目标<span>{d.goal.text ? "已填写" : "待填写"}</span>
@@ -124,6 +141,26 @@ export function PreparationWorkspace({
           </Button>
         )}
         <div className="rail-tools">
+          {!activity.draftLocked && (
+            <div className="row">
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={!history.undo}
+                onClick={() => history.restore("undo")}
+              >
+                撤销修改
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={!history.redo}
+                onClick={() => history.restore("redo")}
+              >
+                重做修改
+              </Button>
+            </div>
+          )}
           <Button variant="ghost" onClick={() => setStoryline(true)}>
             完整故事线
           </Button>
@@ -341,12 +378,41 @@ export function PreparationWorkspace({
           </>
         }
       >
-        <h3>当前目标</h3>
-        <p>{d.goal.text}</p>
-        <p>{d.goal.observe}</p>
-        {d.constraints.map((c) => (
-          <p key={c.id}>{c.text}</p>
-        ))}
+        {history.comparison && (
+          <div className="compare">
+            <div>
+              <h3>原教案目标</h3>
+              <p>{history.comparison.goal.text}</p>
+              <p>{history.comparison.goal.observe}</p>
+              {history.comparison.constraints.map((c) => (
+                <p key={c.id}>{c.text}</p>
+              ))}
+            </div>
+            <div>
+              <h3>当前目标</h3>
+              <p>{d.goal.text}</p>
+              <p>{d.goal.observe}</p>
+              {d.constraints.map((c) => (
+                <p key={c.id}>{c.text}</p>
+              ))}
+            </div>
+          </div>
+        )}
+        {!history.comparison && (
+          <p className="small muted">
+            本次编辑历史中没有保留原目标文本；请结合完整教案核对以下内容。
+          </p>
+        )}
+        {!history.comparison && (
+          <>
+            <h3>当前目标</h3>
+            <p>{d.goal.text}</p>
+            <p>{d.goal.observe}</p>
+            {d.constraints.map((c) => (
+              <p key={c.id}>{c.text}</p>
+            ))}
+          </>
+        )}
         {needs.map((s) => (
           <article className="draft-change" key={s.id}>
             <h3>{s.fields.title}</h3>

@@ -6,7 +6,7 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import { Topbar } from "../../app/Shell";
+import { Topbar, SaveIndicator } from "../../app/Shell";
 import { useActivity, useStore } from "../../app/store";
 import { Button, Modal } from "../../components/ui";
 import { preflightBlocks } from "../../domain/preflight";
@@ -108,6 +108,24 @@ export function ActivityPage() {
         />
       </Topbar>
       <div className="activity-meta">
+        <nav className="mobile-modes" aria-label="教学活动模式">
+          <Button
+            variant="ghost"
+            aria-current={mode === "plan" ? "page" : undefined}
+            onClick={() => nav(`/activities/${activity.id}/plan`)}
+          >
+            备课
+          </Button>
+          <Button
+            variant="ghost"
+            aria-current={mode === "class" ? "page" : undefined}
+            onClick={() => nav(`/activities/${activity.id}/class`)}
+          >
+            课堂与复盘
+          </Button>
+          <span>原型模拟</span>
+          <SaveIndicator />
+        </nav>
         <Link to={`/children/${child.id}`}>{child.name}</Link>
         <span>
           {activity.draftLocked

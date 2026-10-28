@@ -482,3 +482,223 @@ describe("先持久化批准快照，再模拟传输", () => {
     ).rejects.toThrow(/校验失败/);
   });
 });
+
+describe("补充环节与部分候选的恢复路径", () => {
+  it("整课候选可只采纳选中的空白环节，教师内容与其余空白保留", async () => {
+    const t = await ready(),
+      d = structuredClone(t.get().draft);
+    for (const s of d.steps.slice(0, 2)) {
+      s.status = "empty";
+      s.fields = {
+        title: "",
+        teacherScript: "",
+        childInteraction: "",
+        observe: "",
+        minutes: 5,
+      };
+    }
+    t.replace(d);
+    const c = {
+      revision: d.revision,
+      steps: d.steps
+        .slice(0, 2)
+        .map((s) => ({
+          stepId: s.id,
+          rev: s.rev,
+          fields: {
+            title: "候选" + s.id,
+            teacherScript: "教师引导",
+            childInteraction: "儿童互动",
+            observe: "观察",
+            minutes: 5,
+          },
+        })),
+    };
+    t.dispatch({ type: "lesson/candidate", activityId: t.id, candidate: c });
+    t.dispatch({
+      type: "lesson/adopt",
+      activityId: t.id,
+      candidate: c,
+      stepIds: [d.steps[0].id],
+      includeStory: false,
+    });
+    expect(t.get().draft.steps[0].status).toBe("draft");
+    expect(t.get().draft.steps[1].status).toBe("empty");
+    expect(t.get().draft.steps[2].fields).toEqual(d.steps[2].fields);
+    expect(t.get().draft.lessonCandidate).toBeUndefined();
+  });
+  it("缺失场景可补充，默认遵守允许暂停，空白内容仍阻断", async () => {
+    const t = await ready(),
+      d = structuredClone(t.get().draft),
+      step = d.steps[0];
+    d.story!.scenes = d.story!.scenes.filter((sc) => sc.stepId !== step.id);
+    t.replace(d);
+    t.dispatch({
+      type: "scene/add",
+      activityId: t.id,
+      stepId: step.id,
+      sceneId: "new-scene",
+    });
+    const sc = t.get().draft.story!.scenes.find((sc) => sc.id === "new-scene")!;
+    expect(sc.node.allowPause).toBe(true);
+    expect(preflightReady(t.get().draft)).toBe(false);
+  });
+  it("批准稿不能增添场景，已有场景不重复创建", async () => {
+    const t = await ready();
+    const before = t.latest();
+    t.dispatch({
+      type: "scene/add",
+      activityId: t.id,
+      stepId: t.get().draft.steps[0].id,
+      sceneId: "duplicate",
+    });
+    expect(t.latest()).toBe(before);
+    t.approve();
+    const locked = t.latest();
+    t.dispatch({
+      type: "scene/add",
+      activityId: t.id,
+      stepId: "missing",
+      sceneId: "duplicate",
+    });
+    expect(t.latest()).toBe(locked);
+  });
+  it("错误版本或校验码的传输回执不可进入记录", async () => {
+    const t = await ready();
+    const ctx = {
+      latest: t.latest,
+      dispatch: t.dispatch,
+      persist: () => true,
+      connect: async () => ({ ok: true as const, label: "" }),
+      transfer: async () => ({
+        id: "tx",
+        versionId: "wrong",
+        versionNo: 1,
+        at: "",
+        ok: true,
+        message: "",
+        simulated: true as const,
+        receipt: {
+          receiptId: "bad",
+          checksum: "bad",
+          stepCount: 5,
+          sceneCount: 5,
+        },
+      }),
+    };
+    await expect(
+      prepareLesson(ctx, t.id, t.get().draft.revision),
+    ).rejects.toThrow(/不一致/);
+    expect(t.get().transfers).toHaveLength(0);
+  });
+  it("保存回执失败后再次保存不会重复传输", async () => {
+    const t = await ready();
+    let saves = 0,
+      sent = 0;
+    const ctx = {
+      latest: t.latest,
+      dispatch: t.dispatch,
+      persist: () => ++saves !== 2,
+      connect: async () => ({ ok: true as const, label: "" }),
+      transfer: async (
+        v: AppData["activities"][number]["versions"][number],
+      ) => {
+        sent++;
+        return {
+          id: "tx",
+          versionId: v.id,
+          versionNo: v.versionNo,
+          at: "",
+          ok: true,
+          message: "",
+          simulated: true as const,
+          receipt: {
+            receiptId: "SIM",
+            checksum: v.checksum,
+            stepCount: 5,
+            sceneCount: 5,
+          },
+        };
+      },
+    };
+    await expect(
+      prepareLesson(ctx, t.id, t.get().draft.revision),
+    ).rejects.toThrow(/回执保存失败/);
+    await prepareLesson(ctx, t.id, t.get().draft.revision);
+    expect(sent).toBe(1);
+    expect(t.get().versions).toHaveLength(1);
+  });
+});
+
+describe("编辑撤销的批准边界", () => {
+  it("撤销恢复环节内容但修订号单调增加，旧候选被清除", async () => {
+    const t = await ready(),
+      before = structuredClone(t.get().draft),
+      s = before.steps[0];
+    t.dispatch({
+      type: "step/edit",
+      activityId: t.id,
+      stepId: s.id,
+      patch: { title: "修改后" },
+    });
+    const revision = t.get().draft.revision;
+    t.dispatch({
+      type: "plan/restore-edit",
+      activityId: t.id,
+      draft: before,
+      expectedRevision: revision,
+      versionCount: 0,
+    });
+    expect(t.get().draft.steps[0].fields.title).toBe(s.fields.title);
+    expect(t.get().draft.revision).toBeGreaterThan(revision);
+    expect(t.get().draft.steps[0].rev).toBeGreaterThan(s.rev);
+    expect(t.get().draft.lessonCandidate).toBeUndefined();
+  });
+  it("目标撤销仍触发下游复核，不静默恢复批准资格", async () => {
+    const t = await ready(),
+      before = structuredClone(t.get().draft);
+    t.dispatch({
+      type: "goal/edit",
+      activityId: t.id,
+      patch: { text: "不同目标" },
+    });
+    t.dispatch({
+      type: "plan/restore-edit",
+      activityId: t.id,
+      draft: before,
+      expectedRevision: t.get().draft.revision,
+      versionCount: 0,
+    });
+    expect(t.get().draft.steps.every((s) => !!s.needsReview)).toBe(true);
+    expect(preflightReady(t.get().draft)).toBe(false);
+  });
+  it("批准后不可撤销当前稿，旧批准快照不被改变", async () => {
+    const t = await ready(),
+      before = structuredClone(t.get().draft);
+    t.approve();
+    const state = t.latest();
+    t.dispatch({
+      type: "plan/restore-edit",
+      activityId: t.id,
+      draft: before,
+      expectedRevision: t.get().draft.revision,
+      versionCount: 0,
+    });
+    expect(t.latest()).toBe(state);
+  });
+  it("继续修订后不能恢复上一批准边界之前的编辑历史", async () => {
+    const t = await ready(),
+      before = structuredClone(t.get().draft);
+    t.approve();
+    t.dispatch({ type: "plan/resume-editing", activityId: t.id });
+    const state = t.latest();
+    t.dispatch({
+      type: "plan/restore-edit",
+      activityId: t.id,
+      draft: before,
+      expectedRevision: t.get().draft.revision,
+      versionCount: 1,
+    });
+    expect(t.latest()).toBe(state);
+  });
+});

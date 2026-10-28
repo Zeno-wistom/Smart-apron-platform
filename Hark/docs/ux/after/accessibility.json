@@ -1,0 +1,62 @@
+[
+  {
+    "width": 1366,
+    "route": "",
+    "violations": []
+  },
+  {
+    "width": 1366,
+    "route": "activities/act_269bfae11/plan?focus=step-step_9179798d4",
+    "violations": []
+  },
+  {
+    "width": 1366,
+    "route": "activities/act_269bfae11/class",
+    "violations": []
+  },
+  {
+    "width": 1366,
+    "route": "records",
+    "violations": []
+  },
+  {
+    "width": 1366,
+    "route": "children/child-xiaozhou",
+    "violations": []
+  },
+  {
+    "width": 1366,
+    "route": "preflight",
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "",
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "activities/act_269bfae11/plan?focus=step-step_9179798d4",
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "activities/act_269bfae11/class",
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "records",
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "children/child-xiaozhou",
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "preflight",
+    "violations": []
+  }
+]

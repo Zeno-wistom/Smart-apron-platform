@@ -1,6 +1,7 @@
-import { chromium } from "playwright";
+const BASE = process.env.BASE_URL ?? "http://127.0.0.1:5184";
+import { launchBrowser } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
-const browser = await chromium.launch({ channel: "msedge" });
+const browser = await launchBrowser();
 const ctx = await browser.newContext({
   viewport: { width: 1366, height: 768 },
 });
@@ -21,7 +22,7 @@ function check(name, value, detail) {
   if (!value) throw Error(name);
 }
 try {
-  await p.goto("http://127.0.0.1:5184/?fast=1#/");
+  await p.goto(`${BASE}/?fast=1#/`);
   await p.getByRole("heading", { name: "教学工作台", exact: true }).waitFor();
   await p.screenshot({ path: out + "/workbench-empty.png" });
   await p.getByRole("button", { name: "新建教学活动" }).click();

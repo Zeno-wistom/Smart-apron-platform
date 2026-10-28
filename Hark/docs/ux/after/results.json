@@ -1,0 +1,98 @@
+[
+  {
+    "name": "整课初稿只产生候选，未直接写入正文",
+    "ok": true
+  },
+  {
+    "name": "教学与故事同屏",
+    "ok": true
+  },
+  {
+    "name": "1440px 无溢出且字号>=13",
+    "ok": true,
+    "detail": {
+      "overflow": 0,
+      "paper": 824,
+      "content": 760,
+      "chrome": 56,
+      "minFont": 13
+    }
+  },
+  {
+    "name": "1366px 无溢出且字号>=13",
+    "ok": true,
+    "detail": {
+      "overflow": 0,
+      "paper": 824,
+      "content": 760,
+      "chrome": 56,
+      "minFont": 13
+    }
+  },
+  {
+    "name": "1366 正文>=640且顶部56",
+    "ok": true,
+    "detail": {
+      "overflow": 0,
+      "paper": 824,
+      "content": 760,
+      "chrome": 56,
+      "minFont": 13
+    }
+  },
+  {
+    "name": "1024px 无溢出且字号>=13",
+    "ok": true,
+    "detail": {
+      "overflow": 0,
+      "paper": 744,
+      "content": 680,
+      "chrome": 56,
+      "minFont": 13
+    }
+  },
+  {
+    "name": "390px 无溢出且字号>=13",
+    "ok": true,
+    "detail": {
+      "overflow": 0,
+      "paper": 390,
+      "content": 358,
+      "chrome": 56,
+      "minFont": 13
+    }
+  },
+  {
+    "name": "参考抽屉覆盖而不挤压正文",
+    "ok": true
+  },
+  {
+    "name": "抽屉背景 inert",
+    "ok": true
+  },
+  {
+    "name": "故事线显示五幕",
+    "ok": true
+  },
+  {
+    "name": "一次集中审核可批准",
+    "ok": true
+  },
+  {
+    "name": "保存失败前无传输",
+    "ok": true
+  },
+  {
+    "name": "失败重试复用同一批准版本",
+    "ok": true
+  },
+  {
+    "name": "回执绑定批准版本",
+    "ok": true
+  },
+  {
+    "name": "浏览器控制台无错误",
+    "ok": true,
+    "detail": []
+  }
+]

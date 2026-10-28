@@ -1,6 +1,7 @@
-import { chromium } from "playwright";
+const BASE = process.env.BASE_URL ?? "http://127.0.0.1:5184";
+import { launchBrowser } from "./browser.mjs";
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
-const b = await chromium.launch({ channel: "msedge" }),
+const b = await launchBrowser(),
   ctx = await b.newContext({ viewport: { width: 1366, height: 768 } }),
   p = await ctx.newPage();
 const saved = JSON.parse(
@@ -20,7 +21,7 @@ await p.addInitScript((env) => {
     localStorage.setItem("smart-apron:hark:v1", JSON.stringify(env));
 }, saved);
 try {
-  await p.goto(`http://127.0.0.1:5184/?fast=1#/activities/${id}/class`);
+  await p.goto(`${BASE}/?fast=1#/activities/${id}/class`);
   await p.getByRole("button", { name: "结束模拟课堂并生成复盘" }).click();
   await p.getByTestId("refl-item").first().waitFor();
   check("课堂与复盘一次生成", (await p.locator(".tl-ev").count()) > 10);
@@ -87,7 +88,7 @@ try {
     .getByRole("button", { name: "以上内容仍适用于当前目标与限制" })
     .click();
   await p.goto(
-    `http://127.0.0.1:5184/?fast=1#/activities/${id}/story?focus=scene-${after.draft.story.scenes[0].id}`,
+    `${BASE}/?fast=1#/activities/${id}/story?focus=scene-${after.draft.story.scenes[0].id}`,
   );
   await p.waitForURL(/\/plan\?focus=step-/);
   check(

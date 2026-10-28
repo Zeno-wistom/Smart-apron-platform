@@ -1,6 +1,7 @@
-import { chromium } from "playwright";
+const BASE = process.env.BASE_URL ?? "http://127.0.0.1:5184";
+import { launchBrowser } from "./browser.mjs";
 import { writeFileSync } from "node:fs";
-const b = await chromium.launch({ channel: "msedge" }),
+const b = await launchBrowser(),
   p = await b.newPage({ viewport: { width: 1366, height: 900 } });
 const results = [];
 const check = (name, ok) => {
@@ -21,7 +22,7 @@ async function activate(locator) {
   await p.keyboard.press("Enter");
 }
 try {
-  await p.goto("http://127.0.0.1:5184/?fast=1#/");
+  await p.goto(`${BASE}/?fast=1#/`);
   await activate(p.getByRole("button", { name: "新建教学活动" }));
   await tabTo(p.locator("#goal-text"));
   await p.keyboard.type("在视觉提示下练习轮流表达");
@@ -32,7 +33,9 @@ try {
   await activate(p.getByTestId("open-preflight"));
   await p.waitForTimeout(80);
   const dialog = p.getByRole("dialog");
-  const controls = dialog.locator("button:not(:disabled),input:not(:disabled),select:not(:disabled),a[href]");
+  const controls = dialog.locator(
+    "button:not(:disabled),input:not(:disabled),select:not(:disabled),a[href]",
+  );
   const count = await controls.count();
   const last = controls.last();
   await tabTo(last);
@@ -83,4 +86,3 @@ try {
   );
   await b.close();
 }
-

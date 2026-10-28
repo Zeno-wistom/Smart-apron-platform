@@ -6,6 +6,7 @@ import "./styles/base.css";
 import "./styles/components.css";
 import "./styles/layout.css";
 import "./styles/features.css";
+import "./styles/ux.css";
 import { RequestsProvider, StoreProvider } from "./app/store";
 import { Shell } from "./app/Shell";
 import { WorkbenchPage } from "./features/workbench/WorkbenchPage";

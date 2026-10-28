@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   CircleCheck,
@@ -37,18 +37,23 @@ const EV_ICON: Record<ClassEvent["kind"], LucideIcon> = { start: Play, cue: Radi
 export function ClassStage({ activity, child }: { activity: Activity; child: ChildProfile }) {
   const [params, setParams] = useSearchParams();
   const { dispatch, toast } = useStore();
+  const ai = useAi(activity.id);
+  const [creating,setCreating]=useState(false);
+  const creatingRef=useRef(false);
   const sessions = activity.sessions;
   const session = sessions.find((s) => s.id === params.get("session")) ?? sessions[sessions.length - 1];
   const transferred = activity.versions.filter((v) => activity.transfers.some((t) => t.versionId === v.id && t.ok));
   const latestTransferred = transferred[transferred.length - 1];
   const [hl, setHl] = useState<string[]>([]);
 
-  const create = () => {
-    if (!latestTransferred) return;
+  const create = async () => {
+    if (!latestTransferred || creatingRef.current) return;
+    creatingRef.current=true;setCreating(true);
     const s = simulateSession(latestTransferred);
     dispatch({ type: "session/create", activityId: activity.id, session: s });
     setParams({ session: s.id });
     toast(`已生成模拟课堂记录（教案 v${latestTransferred.versionNo}）`, "success");
+    try { await ai.draftReflection(s.id); } finally {creatingRef.current=false;setCreating(false);}
   };
 
   if (!latestTransferred) {
@@ -59,7 +64,7 @@ export function ClassStage({ activity, child }: { activity: Activity; child: Chi
           <h3>尚无可用于课堂的教案版本</h3>
           <p>批准教案并完成一次模拟传输后，才能生成课堂记录。</p>
           <Link to={`/activities/${activity.id}/review`} className="btn btn-primary btn-md" style={{ marginTop: 8 }}>
-            <span className="btn-label">前往审核与传输</span>
+            <span className="btn-label">打开课前检查</span>
           </Link>
         </div>
       </div>
@@ -82,9 +87,7 @@ export function ClassStage({ activity, child }: { activity: Activity; child: Chi
             ))}
           </div>
         )}
-        <Button icon={Plus} sim onClick={create} data-testid="create-session">
-          生成模拟课堂记录（v{latestTransferred.versionNo}）
-        </Button>
+        {sessions.length>0&&<Button icon={Plus} loading={creating} onClick={create} data-testid="create-session">新一次模拟课堂 · v{latestTransferred.versionNo}</Button>}
       </div>
 
       {!session ? (
@@ -92,8 +95,8 @@ export function ClassStage({ activity, child }: { activity: Activity; child: Chi
           <Radio className="ico" />
           <h3>课堂由教师和儿童通过实体围裙进行</h3>
           <p>本原型不采集真实课堂数据。生成一份基于 v{latestTransferred.versionNo} 的模拟记录，用于演示课后复盘流程。</p>
-          <Button variant="primary" icon={Plus} sim onClick={create} style={{ marginTop: 8 }}>
-            生成模拟课堂记录
+          <Button variant="primary" icon={Plus} loading={creating} onClick={create} style={{ marginTop: 8 }}>
+            结束模拟课堂并生成复盘
           </Button>
         </div>
       ) : (
@@ -109,10 +112,9 @@ export function ClassStage({ activity, child }: { activity: Activity; child: Chi
 function Timeline({ activity, session, highlight }: { activity: Activity; session: ClassSession; highlight: string[] }) {
   const v = activity.versions.find((x) => x.id === session.versionId)!;
   return (
-    <section className="panel timeline" aria-label="课堂事件">
+    <section className="panel timeline" aria-label="课堂事件" tabIndex={0}>
       <div className="tl-head">
         <h2 className="grow">课堂事件</h2>
-        <SimTag>模拟记录</SimTag>
       </div>
       <div className="small muted tl-meta">
         关联教案 <Tag tone="ok" icon={Lock}>v{v.versionNo}</Tag> · 生成于 {formatTime(session.createdAt)} · {session.events.length} 条事件
@@ -148,10 +150,11 @@ function Timeline({ activity, session, highlight }: { activity: Activity; sessio
 }
 
 function ReflectionPanel({ activity, child, session, onEvidence }: { activity: Activity; child: ChildProfile; session: ClassSession; onEvidence: (ids: string[]) => void }) {
-  const { dispatch, data, toast } = useStore();
+  const { dispatch, data, latest, toast } = useStore();
   const ai = useAi(activity.id);
   const { pending, errors, clearError } = useRequests();
   const [applyOpen, setApplyOpen] = useState(false);
+  const [editingKind,setEditingKind]=useState<string|null>(null);
   const r = session.reflection;
   const key = `reflect:${session.id}`;
   const id = activity.id;
@@ -193,7 +196,7 @@ function ReflectionPanel({ activity, child, session, onEvidence }: { activity: A
         </div>
       ) : (
         <div className="refl-body">
-          <ul className="legend" aria-label="来源说明">
+          <details className="source-help"><summary>如何核对事实、模拟记录、推断与未知？</summary><ul className="legend" aria-label="来源说明">
             {(Object.keys(KIND_META) as ReviewItemKind[]).map((k) => (
               <li key={k} title={KIND_META[k].desc}>
                 <Tag tone={KIND_META[k].tone} icon={KIND_META[k].icon}>
@@ -202,7 +205,7 @@ function ReflectionPanel({ activity, child, session, onEvidence }: { activity: A
                 <span className="small muted">{KIND_META[k].desc}</span>
               </li>
             ))}
-          </ul>
+          </ul></details>
 
           <ol className="refl-items">
             {r.items.map((it) => {
@@ -210,12 +213,12 @@ function ReflectionPanel({ activity, child, session, onEvidence }: { activity: A
               return (
                 <li key={it.id} className={cx("refl-item", `k-${it.kind}`)} data-testid="refl-item">
                   <div className="row refl-item-head">
-                    {ro ? (
+                    {ro || editingKind!==it.id ? (
                       <Tag tone={m.tone} icon={m.icon}>
                         {m.label}
                       </Tag>
                     ) : (
-                      <select className="input kind-select" aria-label="来源类型" value={it.kind} onChange={(e) => dispatch({ type: "reflection/item-kind", activityId: id, sessionId: sid, itemId: it.id, kind: e.target.value as ReviewItemKind })}>
+                      <select autoFocus className="input kind-select" aria-label="来源类型" value={it.kind} onBlur={()=>setEditingKind(null)} onChange={(e) => dispatch({ type: "reflection/item-kind", activityId: id, sessionId: sid, itemId: it.id, kind: e.target.value as ReviewItemKind })}>
                         {(Object.keys(KIND_META) as ReviewItemKind[]).map((k) => (
                           <option key={k} value={k}>
                             {KIND_META[k].label}
@@ -223,6 +226,7 @@ function ReflectionPanel({ activity, child, session, onEvidence }: { activity: A
                         ))}
                       </select>
                     )}
+                    {!ro&&editingKind!==it.id&&<Button variant="quiet" size="sm" onClick={()=>setEditingKind(it.id)}>更改来源</Button>}
                     {it.edited && <span className="small muted">教师已修改</span>}
                     <span className="grow" />
                     {it.evidence.length > 0 && (
@@ -264,7 +268,7 @@ function ReflectionPanel({ activity, child, session, onEvidence }: { activity: A
             value={r.proposedObservation}
             readOnly={ro}
             minRows={2}
-            hint="审核完成后，需再次确认才会写入档案。"
+            hint="完成时将预览写入内容与来源，确认后追加到档案。"
             onChange={(v) => dispatch({ type: "reflection/field", activityId: id, sessionId: sid, patch: { proposedObservation: v } })}
           />
 
@@ -272,7 +276,6 @@ function ReflectionPanel({ activity, child, session, onEvidence }: { activity: A
             <div className="refl-foot">
               <span className="small muted grow">{r.teacherSummary.trim() ? "确认来源标注无误后完成审核。" : "填写教师总结后可完成审核。"}</span>
               <Button
-                variant="primary"
                 icon={UserRoundCheck}
                 disabled={!r.teacherSummary.trim()}
                 onClick={() => {
@@ -281,8 +284,9 @@ function ReflectionPanel({ activity, child, session, onEvidence }: { activity: A
                 }}
                 data-testid="review-reflection"
               >
-                完成审核
+                仅完成复盘
               </Button>
+              <Button variant="primary" disabled={!r.teacherSummary.trim()||!r.proposedObservation.trim()} onClick={()=>setApplyOpen(true)} data-testid="complete-and-apply">完成并写入档案</Button>
             </div>
           ) : (
             <div className="refl-foot column">
@@ -308,10 +312,6 @@ function ReflectionPanel({ activity, child, session, onEvidence }: { activity: A
             </div>
           )}
 
-          <div className="future small">
-            <b>专业评估</b>
-            <span className="muted"> · 后续功能，暂不提供量表、诊断或疗效结论。</span>
-          </div>
         </div>
       )}
 
@@ -325,13 +325,15 @@ function ReflectionPanel({ activity, child, session, onEvidence }: { activity: A
             <Button
               variant="primary"
               onClick={() => {
+                if(!ro) dispatch({ type:'reflection/review',activityId:id,sessionId:sid,at:new Date().toISOString() });
                 dispatch({ type: "profile/apply", activityId: id, sessionId: sid, observationId: uid("obs"), at: new Date().toISOString() });
                 setApplyOpen(false);
-                toast(`已写入${child.name}的档案`, "success");
+                const applied=latest().activities.find(a=>a.id===id)?.sessions.find(s=>s.id===sid)?.reflection?.appliedObservationId;
+                toast(applied?`复盘已审核并写入${child.name}的档案`:'内容未写入，请检查复盘审核状态',applied?'success':'error');
               }}
               data-testid="apply-confirm"
             >
-              确认写入
+              {ro?'确认写入':'完成审核并写入'}
             </Button>
           </>
         }

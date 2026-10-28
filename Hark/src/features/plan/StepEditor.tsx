@@ -264,7 +264,7 @@ function CandidateCard({ activity, step, onRegenerate }: { activity: Activity; s
               {FIELD_LABEL[f]}
               {replaced.includes(f) && <Tag tone="warn">将替换</Tag>}
             </dt>
-            <dd>{c.fields[f]}</dd>
+            <dd>{replaced.includes(f)&&<del className="diff-old">{step.fields[f]}</del>}<p>{c.fields[f]}</p></dd>
           </div>
         ))}
         <div className="cand-row">

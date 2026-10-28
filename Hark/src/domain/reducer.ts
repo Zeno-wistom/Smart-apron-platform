@@ -28,6 +28,7 @@ import type {
 } from "./types";
 
 export type Action =
+  | { type:'scene/add'; activityId:string; stepId:string; sceneId:string }
   | { type: 'lesson/candidate'; activityId: string; candidate: LessonCandidate }
   | { type: 'lesson/discard'; activityId: string }
   | { type: 'plan/approve-ready'; activityId: string; versionId: string; at: string; expectedRevision: number }
@@ -199,6 +200,13 @@ function editableReflection(s: ClassSession): Reflection | null {
 
 export function reducer(data: AppData, action: Action): AppData {
   switch (action.type) {
+    case 'scene/add':
+      return editDraft(data,action.activityId,d=>{
+        const s=findStep(d,action.stepId);
+        if(!d.story||d.story.confirmed||!s||d.story.scenes.some(sc=>sc.stepId===s.id||sc.id===action.sceneId))return false;
+        d.story.scenes.push({id:action.sceneId,stepId:s.id,title:s.fields.title,narration:'',node:{prompt:'',expected:'',allowPause:d.constraints.some(c=>c.kind==='allow-pause')},cueIds:[],rev:0});
+        d.story.rev++;d.story.apronConfirmed=false;
+      });
     case 'lesson/candidate':
       return withActivity(data,action.activityId,a=>{
         if(a.draftLocked||a.draft.revision!==action.candidate.revision||a.draft.lessonCandidate)return null;

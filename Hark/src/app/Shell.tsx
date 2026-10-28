@@ -61,12 +61,6 @@ export function Shell({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div className="sidebar-foot">
-          <div className="sim-banner">
-            <FlaskConical className="ico" aria-hidden />
-            <span>
-              原型模式：AI、围裙与课堂数据均为<strong>模拟</strong>，儿童资料为虚构。
-            </span>
-          </div>
           <DemoControls />
         </div>
       </aside>
@@ -117,6 +111,7 @@ export function Topbar({ children, right }: { children: ReactNode; right?: React
       <div className="topbar-left">{children}</div>
       <div className="topbar-right">
         {right}
+        <span className="prototype-label" title="AI、围裙与课堂均为本地模拟；儿童资料为虚构">原型模拟</span>
         <SaveIndicator />
       </div>
     </header>
@@ -183,6 +178,7 @@ function DemoControls() {
         icon={FlaskConical}
         aria-expanded={open}
         aria-haspopup="dialog"
+        aria-label="原型工具"
         onClick={() => setOpen((v) => !v)}
       >
         原型工具{armed ? " · 已设置失败" : ""}

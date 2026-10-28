@@ -1,0 +1,150 @@
+[
+  {
+    "width": 1440,
+    "route": "",
+    "overflow": 0,
+    "chrome": 56,
+    "minFont": 11
+  },
+  {
+    "width": 1440,
+    "route": "plan",
+    "overflow": 0,
+    "chrome": 108,
+    "editor": 608,
+    "minFont": 11
+  },
+  {
+    "width": 1440,
+    "route": "story",
+    "overflow": 0,
+    "chrome": 108,
+    "editor": 608,
+    "minFont": 11
+  },
+  {
+    "width": 1440,
+    "route": "review",
+    "overflow": 0,
+    "chrome": 108,
+    "minFont": 11
+  },
+  {
+    "width": 1440,
+    "route": "class",
+    "overflow": 0,
+    "chrome": 108,
+    "minFont": 11
+  },
+  {
+    "width": 1366,
+    "route": "",
+    "overflow": 0,
+    "chrome": 56,
+    "minFont": 11
+  },
+  {
+    "width": 1366,
+    "route": "plan",
+    "overflow": 0,
+    "chrome": 108,
+    "editor": 534,
+    "minFont": 11
+  },
+  {
+    "width": 1366,
+    "route": "story",
+    "overflow": 0,
+    "chrome": 108,
+    "editor": 534,
+    "minFont": 11
+  },
+  {
+    "width": 1366,
+    "route": "review",
+    "overflow": 0,
+    "chrome": 108,
+    "minFont": 11
+  },
+  {
+    "width": 1366,
+    "route": "class",
+    "overflow": 0,
+    "chrome": 108,
+    "minFont": 11
+  },
+  {
+    "width": 1024,
+    "route": "",
+    "overflow": 0,
+    "chrome": 56,
+    "minFont": 11
+  },
+  {
+    "width": 1024,
+    "route": "plan",
+    "overflow": 0,
+    "chrome": 108,
+    "editor": 520,
+    "minFont": 11
+  },
+  {
+    "width": 1024,
+    "route": "story",
+    "overflow": 0,
+    "chrome": 108,
+    "editor": 520,
+    "minFont": 11
+  },
+  {
+    "width": 1024,
+    "route": "review",
+    "overflow": 0,
+    "chrome": 108,
+    "minFont": 11
+  },
+  {
+    "width": 1024,
+    "route": "class",
+    "overflow": 0,
+    "chrome": 108,
+    "minFont": 11
+  },
+  {
+    "width": 390,
+    "route": "",
+    "overflow": 0,
+    "chrome": 56,
+    "minFont": 12
+  },
+  {
+    "width": 390,
+    "route": "plan",
+    "overflow": 0,
+    "chrome": 147,
+    "editor": 358,
+    "minFont": 11
+  },
+  {
+    "width": 390,
+    "route": "story",
+    "overflow": 0,
+    "chrome": 147,
+    "editor": 358,
+    "minFont": 11
+  },
+  {
+    "width": 390,
+    "route": "review",
+    "overflow": 0,
+    "chrome": 147,
+    "minFont": 11
+  },
+  {
+    "width": 390,
+    "route": "class",
+    "overflow": 0,
+    "chrome": 147,
+    "minFont": 11
+  }
+]

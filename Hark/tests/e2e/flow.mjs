@@ -12,11 +12,12 @@
  *       复盘审核后才写入档案、1366/1440/375 宽度布局、Console 错误。
  */
 import { chromium } from "playwright";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const BASE = (process.env.BASE_URL ?? "http://127.0.0.1:5174") + "/?fast=1";
 const SHOTS = process.env.SHOTS === "1";
-const OUT = new URL("./artifacts/", import.meta.url).pathname;
+const OUT = fileURLToPath(new URL("../../docs/ux/before/", import.meta.url));
 if (SHOTS) mkdirSync(OUT, { recursive: true });
 
 const results = [];
@@ -279,6 +280,7 @@ try {
     }
   }
   const firstAct = await page.evaluate(() => JSON.parse(localStorage.getItem("smart-apron:hark:v1")).data.activities[0].id);
+  if (SHOTS) writeFileSync(new URL('./legacy-envelope.json', import.meta.url), await page.evaluate(() => localStorage.getItem('smart-apron:hark:v1')));
   for (const w of [1366, 1440, 375]) {
     await page.setViewportSize({ width: w, height: 860 });
     for (const st of ["plan", "story", "review", "class"]) {

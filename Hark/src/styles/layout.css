@@ -52,7 +52,7 @@
 }
 .brand-name {
   font-size: var(--fs-15);
-  font-weight: 680;
+  font-weight: 600;
   letter-spacing: 0.02em;
 }
 .brand-sub {
@@ -73,7 +73,7 @@
   padding: 0 8px;
   border-radius: var(--r-md);
   color: var(--ink-2);
-  font-weight: 540;
+  font-weight: 600;
   transition: background var(--t-fast), color var(--t-fast);
 }
 .nav-item:hover {
@@ -84,7 +84,7 @@
 .nav-item.active {
   background: var(--primary-soft);
   color: var(--primary-ink);
-  font-weight: 620;
+  font-weight: 600;
 }
 .nav-item.active .ico {
   color: var(--primary);

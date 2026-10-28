@@ -22,7 +22,7 @@ interface StoreValue {
   /** 读取最新数据（异步回调里使用，避免闭包中的旧值） */
   latest: () => AppData;
   save: SaveState;
-  saveNow: () => void;
+  saveNow: () => boolean;
   loadStatus: storage.LoadResult["status"];
   corruptRaw?: string;
   resetAll: () => void;
@@ -45,9 +45,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const timer = useRef<number | undefined>(undefined);
 
   const persist = useCallback(() => {
-    if (loadStatus === "corrupt") return; // 损坏数据不自动覆盖
+    if (loadStatus === "corrupt") return false; // 损坏数据不自动覆盖
+    window.clearTimeout(timer.current);
     const r = storage.save(dataRef.current);
     setSave(r.ok ? { kind: "saved", savedAt: r.savedAt } : { kind: "error", error: r.error });
+    return r.ok;
   }, [loadStatus]);
 
   useEffect(() => {

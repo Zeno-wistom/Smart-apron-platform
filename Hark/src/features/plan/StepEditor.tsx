@@ -29,12 +29,14 @@ export function StepEditor({
   step,
   index,
   onGo,
+  integrated = false,
 }: {
   activity: Activity;
   child: ChildProfile;
   step: Step;
   index: number;
   onGo: (f: string) => void;
+  integrated?: boolean;
 }) {
   const { dispatch } = useStore();
   const { pending, errors, clearError, cancel } = useRequests();
@@ -44,7 +46,7 @@ export function StepEditor({
   const id = activity.id;
   const locked = activity.draftLocked;
   const confirmed = step.status === "confirmed";
-  const readOnly = locked || confirmed;
+  const readOnly = locked || (!integrated && confirmed);
   const key = `step:${step.id}`;
   const busy = pending[key];
   const completing = pending[`complete:${id}`] && step.status === "empty" && !step.candidate;
@@ -56,7 +58,7 @@ export function StepEditor({
   const allDone = d.steps.every((s) => s.status === "confirmed" && !s.needsReview);
   const edit = (patch: Partial<StepFields>) => dispatch({ type: "step/edit", activityId: id, stepId: step.id, patch });
 
-  const goalReady = d.goal.confirmed;
+  const goalReady = integrated ? !!d.goal.text.trim() : d.goal.confirmed;
   const canGenerate = goalReady && !readOnly && !busy && !completing;
 
   const confirmAndNext = () => {
@@ -67,7 +69,7 @@ export function StepEditor({
 
   return (
     <div className="editor-inner">
-      <header className="editor-head">
+      {!integrated && <header className="editor-head">
         <div className="grow">
           <div className="eyebrow">
             正在编辑 · 第 {index + 1} / {d.steps.length} 环节 · {ROLE_LABEL[step.role]}
@@ -81,10 +83,10 @@ export function StepEditor({
         <div className="row">
           {!readOnly && d.steps.length > 1 && <Button variant="ghost" size="sm" icon={Trash2} aria-label="删除此环节" onClick={() => setConfirmDelete(true)} />}
         </div>
-      </header>
-      <p className="role-hint small muted">{ROLE_HINT[step.role]}</p>
+      </header>}
+      {!integrated && <p className="role-hint small muted">{ROLE_HINT[step.role]}</p>}
 
-      {step.needsReview && (
+      {!integrated && step.needsReview && (
         <div className="notice notice-warn" role="status">
           <TriangleAlert className="ico" />
           <span className="grow">
@@ -98,7 +100,7 @@ export function StepEditor({
         </div>
       )}
 
-      {confirmed && !locked && (
+      {!integrated && confirmed && !locked && (
         <div className="notice notice-ok">
           <Lock className="ico" />
           <span className="grow">已确认并锁定。AI 不会修改已确认内容。</span>
@@ -109,7 +111,7 @@ export function StepEditor({
       )}
 
       <section className={cx("ed-section step-fields", step.candidate && "has-candidate")}>
-        <div className="stack">
+        {!integrated && <div className="stack">
           {FIELDS.map((f) => (
             <TextArea
               key={f}
@@ -141,7 +143,7 @@ export function StepEditor({
               <span className="small muted">分钟</span>
             </div>
           </div>
-        </div>
+        </div>}
 
         {/* AI 区：紧贴正在编辑的字段 */}
         <div className="ai-slot">
@@ -168,7 +170,7 @@ export function StepEditor({
                     ? "需要另一种写法？AI 会给出候选，你对比后再决定是否替换。"
                     : "根据本课目标、限制、备注和上一环节生成建议。"}
               </span>
-              <Button variant="ai" size="sm" icon={Sparkles} sim disabled={!canGenerate} onClick={() => ai.generateStep(step.id, "generate")} data-testid="gen-step">
+              <Button variant="ai" size="sm" icon={Sparkles} disabled={!canGenerate} onClick={() => { if(integrated && confirmed) dispatch({type:'step/unlock',activityId:id,stepId:step.id}); ai.generateStep(step.id, "generate"); }} data-testid="gen-step">
                 {stepHasContent(step.fields) ? "生成改写建议" : "生成本环节建议"}
               </Button>
             </div>
@@ -176,7 +178,7 @@ export function StepEditor({
         </div>
       </section>
 
-      <footer className="editor-foot">
+      {!integrated && <footer className="editor-foot">
         <Button variant="ghost" icon={ArrowLeft} onClick={() => (prev ? onGo(prev.id) : onGo("goal"))}>
           {prev ? `第 ${index} 环节` : "目标与限制"}
         </Button>
@@ -208,7 +210,7 @@ export function StepEditor({
             </Button>
           )
         )}
-      </footer>
+      </footer>}
 
       <Modal
         open={confirmDelete}
@@ -262,7 +264,7 @@ function CandidateCard({ activity, step, onRegenerate }: { activity: Activity; s
               {FIELD_LABEL[f]}
               {replaced.includes(f) && <Tag tone="warn">将替换</Tag>}
             </dt>
-            <dd>{c.fields[f]}</dd>
+            <dd>{replaced.includes(f)&&<del className="diff-old">{step.fields[f]}</del>}<p>{c.fields[f]}</p></dd>
           </div>
         ))}
         <div className="cand-row">
@@ -282,7 +284,7 @@ function CandidateCard({ activity, step, onRegenerate }: { activity: Activity; s
         )
       )}
       <div className="candidate-actions">
-        <Button variant="primary" size="sm" icon={CheckCheck} disabled={!!why} onClick={() => dispatch({ type: "step/adopt", activityId: id, stepId: step.id })} data-testid="adopt">
+        <Button size="sm" icon={CheckCheck} disabled={!!why} onClick={() => dispatch({ type: "step/adopt", activityId: id, stepId: step.id })} data-testid="adopt">
           {hasCurrent ? "采纳并替换" : "采纳为草稿"}
         </Button>
         <Button size="sm" icon={RefreshCw} onClick={onRegenerate} data-testid="regenerate">

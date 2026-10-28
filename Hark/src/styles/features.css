@@ -25,7 +25,7 @@
   place-items: center;
   background: #dfe9e5;
   color: var(--primary-ink);
-  font-weight: 650;
+  font-weight: 600;
   font-size: var(--fs-16);
 }
 .avatar.lg {
@@ -155,7 +155,7 @@ ul.plain {
   justify-content: flex-end;
   color: var(--primary);
   font-size: var(--fs-13);
-  font-weight: 560;
+  font-weight: 500;
 }
 .child-card h2 {
   font-size: var(--fs-18);
@@ -226,7 +226,7 @@ ul.plain {
   background: var(--surface-3);
   color: var(--ink);
   font-size: var(--fs-13);
-  font-weight: 560;
+  font-weight: 500;
 }
 .child-chip:hover {
   text-decoration: none;
@@ -267,7 +267,7 @@ ul.plain {
   position: absolute;
   top: -11px;
   left: 10px;
-  font-size: 10px;
+  font-size: 13px;
   color: var(--ink-4);
   letter-spacing: 0.06em;
   display: none;
@@ -282,7 +282,7 @@ ul.plain {
   border-radius: var(--r-pill);
   background: transparent;
   color: var(--ink-2);
-  font-weight: 560;
+  font-weight: 500;
   cursor: pointer;
   transition: background var(--t-fast), color var(--t-fast);
 }
@@ -297,7 +297,7 @@ ul.plain {
   place-items: center;
   border: 1.5px solid var(--line-strong);
   font-size: var(--fs-12);
-  font-weight: 650;
+  font-weight: 600;
   color: var(--ink-3);
   background: var(--surface);
 }
@@ -318,7 +318,7 @@ ul.plain {
 .stage.current {
   background: var(--primary-soft);
   color: var(--primary-ink);
-  font-weight: 640;
+  font-weight: 600;
 }
 .stage.current .stage-num {
   background: var(--primary);
@@ -337,7 +337,7 @@ ul.plain {
   background: var(--warn-soft);
   color: var(--warn);
   font-size: var(--fs-11);
-  font-weight: 650;
+  font-weight: 600;
   display: grid;
   place-items: center;
 }
@@ -438,7 +438,7 @@ ul.plain {
   display: grid;
   place-items: center;
   font-size: var(--fs-13);
-  font-weight: 650;
+  font-weight: 600;
   color: var(--ink-3);
   border: 1.5px dashed var(--line-strong);
   background: var(--surface);
@@ -845,7 +845,7 @@ ul.plain {
   background: var(--primary-soft);
   color: var(--primary-ink);
   font-size: var(--fs-12);
-  font-weight: 650;
+  font-weight: 600;
 }
 .sb-text {
   display: block;
@@ -1024,7 +1024,7 @@ ul.plain {
   border-radius: 6px;
   background: transparent;
   font-size: var(--fs-13);
-  font-weight: 560;
+  font-weight: 500;
   color: var(--ink-2);
   cursor: pointer;
 }
@@ -1048,14 +1048,14 @@ ul.plain {
 }
 .doc-label {
   font-size: var(--fs-12);
-  font-weight: 650;
+  font-weight: 600;
   color: var(--ink-3);
   letter-spacing: 0.04em;
   margin-bottom: 8px;
 }
 .doc-goal {
   font-size: var(--fs-18);
-  font-weight: 620;
+  font-weight: 600;
 }
 .doc-list {
   list-style: none;
@@ -1098,7 +1098,7 @@ ul.plain {
   background: var(--primary);
   color: #fff;
   font-size: var(--fs-12);
-  font-weight: 650;
+  font-weight: 600;
 }
 .doc-kv {
   display: grid;

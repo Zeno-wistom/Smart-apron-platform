@@ -21,14 +21,18 @@ const KIND_DEFAULT: Record<ConstraintKind, string> = {
   free: "",
 };
 
-export function GoalEditor({ activity, child, onNext }: { activity: Activity; child: ChildProfile; onNext: () => void }) {
+export function GoalEditor({ activity, child, onNext, integrated = false }: { activity: Activity; child: ChildProfile; onNext: () => void; integrated?: boolean }) {
   const { dispatch } = useStore();
   const { pending, errors, clearError } = useRequests();
   const ai = useAi(activity.id);
   const d = activity.draft;
   const g = d.goal;
   const locked = activity.draftLocked;
-  const goalLocked = locked || g.confirmed;
+  const goalLocked = locked || (!integrated && g.confirmed);
+  const editGoal = (patch: { text?: string; observe?: string }, source?: 'ai') => {
+    if (integrated && g.confirmed) dispatch({ type: 'goal/unlock', activityId: activity.id });
+    dispatch({ type: 'goal/edit', activityId: activity.id, patch, source });
+  };
   const [hint, setHint] = useState("");
   const [replace, setReplace] = useState<GoalOption | null>(null);
   const key = `goals:${activity.id}`;
@@ -39,7 +43,7 @@ export function GoalEditor({ activity, child, onNext }: { activity: Activity; ch
     else apply(o);
   };
   const apply = (o: GoalOption) => {
-    dispatch({ type: "goal/edit", activityId: activity.id, patch: { text: o.text, observe: o.observe }, source: "ai" });
+    editGoal({text:o.text,observe:o.observe},'ai');
     setReplace(null);
   };
 
@@ -51,7 +55,7 @@ export function GoalEditor({ activity, child, onNext }: { activity: Activity; ch
           <div className="eyebrow">正在编辑</div>
           <div className="row" style={{ marginTop: 2 }}>
             <h1>目标与限制</h1>
-            {g.confirmed ? (
+            {!integrated && (g.confirmed ? (
               <Tag tone="ok" icon={Lock}>
                 已确认
               </Tag>
@@ -59,8 +63,8 @@ export function GoalEditor({ activity, child, onNext }: { activity: Activity; ch
               <Tag tone="primary">草稿</Tag>
             ) : (
               <Tag>空白</Tag>
-            )}
-            {g.text && <SourceTag source={g.source} />}
+            ))}
+            {!integrated && g.text && <SourceTag source={g.source} />}
           </div>
         </div>
       </header>
@@ -69,7 +73,7 @@ export function GoalEditor({ activity, child, onNext }: { activity: Activity; ch
       <section className="ed-section" id="goal">
         <div className="section-title">
           <h2>本课教学目标</h2>
-          {g.confirmed && !locked && (
+          {g.confirmed && !locked && !integrated && (
             <Button size="sm" variant="ghost" icon={LockOpen} onClick={() => dispatch({ type: "goal/unlock", activityId: id })}>
               解除确认以修改
             </Button>
@@ -85,7 +89,7 @@ export function GoalEditor({ activity, child, onNext }: { activity: Activity; ch
             id="goal-text"
             label="目标（可观察的行为）"
             value={g.text}
-            onChange={(v) => dispatch({ type: "goal/edit", activityId: id, patch: { text: v } })}
+            onChange={(v) => editGoal({ text: v })}
             readOnly={goalLocked}
             placeholder="例如：在视觉提示下练习轮流表达"
             minRows={1}
@@ -94,7 +98,7 @@ export function GoalEditor({ activity, child, onNext }: { activity: Activity; ch
             id="goal-observe"
             label="观察与记录方式"
             value={g.observe}
-            onChange={(v) => dispatch({ type: "goal/edit", activityId: id, patch: { observe: v } })}
+            onChange={(v) => editGoal({ observe: v })}
             readOnly={goalLocked}
             placeholder="例如：每轮记录独立回应 / 提示后回应 / 未观察到"
             minRows={1}
@@ -104,7 +108,7 @@ export function GoalEditor({ activity, child, onNext }: { activity: Activity; ch
         {reviewCount > 0 && (
           <div className="notice notice-warn" style={{ marginTop: 12 }}>
             <TriangleAlert className="ico" />
-            <span>目标或限制已修改，{reviewCount} 个环节需要复核。确认目标后，在左侧逐个查看。</span>
+            <span>目标或限制已修改，{reviewCount} 个环节需要复核。请在“查看受影响内容”中集中核对。</span>
           </div>
         )}
       </section>
@@ -179,7 +183,7 @@ export function GoalEditor({ activity, child, onNext }: { activity: Activity; ch
         />
       </section>
 
-      <footer className="editor-foot">
+      {!integrated && <footer className="editor-foot">
         <span className="small muted grow">
           {g.confirmed ? "目标已确认。接下来逐个编排教学环节。" : "确认目标后，才能生成教学环节。"}
         </span>
@@ -192,7 +196,7 @@ export function GoalEditor({ activity, child, onNext }: { activity: Activity; ch
             {reviewCount > 0 ? "去复核环节" : "开始编排环节"}
           </Button>
         )}
-      </footer>
+      </footer>}
 
       <Modal
         open={!!replace}

@@ -3,6 +3,7 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
+  useId,
   type ButtonHTMLAttributes,
   type ReactNode,
   type TextareaHTMLAttributes,
@@ -177,6 +178,7 @@ export function Modal({
   children,
   footer,
   width = 480,
+  drawer = false,
 }: {
   open: boolean;
   title: string;
@@ -184,28 +186,47 @@ export function Modal({
   children: ReactNode;
   footer?: ReactNode;
   width?: number;
+  drawer?: boolean;
 }) {
   const panel = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
+    const root = document.getElementById('root');
+    const wasInert = root?.inert;
+    if (root) root.inert = true;
     const t = window.setTimeout(() => {
-      panel.current?.querySelector<HTMLElement>("[data-autofocus], input, textarea, button.btn-primary")?.focus();
+      (panel.current?.querySelector<HTMLElement>("[data-autofocus], input:not(:disabled), textarea:not(:disabled), button") ?? panel.current)?.focus();
     }, 20);
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); closeRef.current(); }
+      if (e.key !== 'Tab') return;
+      const items = [...(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex="0"]') ?? [])].filter(el => el.getClientRects().length);
+      const first = items[0], last = items[items.length - 1];
+      if (!first) { e.preventDefault(); panel.current?.focus(); }
+      else if (e.shiftKey && (document.activeElement === first || document.activeElement === panel.current)) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    const oldOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     window.addEventListener("keydown", onKey);
     return () => {
       window.clearTimeout(t);
       window.removeEventListener("keydown", onKey);
+      if (root) root.inert = wasInert ?? false;
+      document.body.style.overflow = oldOverflow;
       prev?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
   if (!open) return null;
   return createPortal(
-    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={panel} className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" style={{ width }}>
+    <div className={cx('modal-backdrop', drawer && 'drawer-backdrop')} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div ref={panel} tabIndex={-1} className={cx('modal', drawer && 'drawer')} role="dialog" aria-modal="true" aria-labelledby={titleId} style={{ width }}>
         <header className="modal-head">
-          <h2 id="modal-title">{title}</h2>
+          <h2 id={titleId}>{title}</h2>
           <Button variant="ghost" size="sm" icon={X} aria-label="关闭" onClick={onClose} />
         </header>
         <div className="modal-body">{children}</div>

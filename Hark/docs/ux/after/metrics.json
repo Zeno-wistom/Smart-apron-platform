@@ -1,0 +1,34 @@
+[
+  {
+    "width": 1440,
+    "overflow": 0,
+    "paper": 824,
+    "content": 760,
+    "chrome": 56,
+    "minFont": 13
+  },
+  {
+    "width": 1366,
+    "overflow": 0,
+    "paper": 824,
+    "content": 760,
+    "chrome": 56,
+    "minFont": 13
+  },
+  {
+    "width": 1024,
+    "overflow": 0,
+    "paper": 744,
+    "content": 680,
+    "chrome": 56,
+    "minFont": 13
+  },
+  {
+    "width": 390,
+    "overflow": 0,
+    "paper": 390,
+    "content": 358,
+    "chrome": 56,
+    "minFont": 13
+  }
+]

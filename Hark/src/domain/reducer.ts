@@ -4,6 +4,8 @@
  */
 import { blockingIssues, checksum } from "./checks";
 import { emptyStep, nowIso } from "./fixtures";
+import { confirmedForPreflight, preflightReady } from './preflight';
+import type { LessonCandidate } from './lessonCandidate';
 import type {
   Activity,
   AppData,
@@ -26,6 +28,14 @@ import type {
 } from "./types";
 
 export type Action =
+  | { type:'plan/restore-edit'; activityId:string; draft:PlanDraft; expectedRevision:number; versionCount:number }
+  | { type:'scene/add'; activityId:string; stepId:string; sceneId:string }
+  | { type: 'lesson/candidate'; activityId: string; candidate: LessonCandidate }
+  | { type: 'lesson/discard'; activityId: string }
+  | { type: 'plan/approve-ready'; activityId: string; versionId: string; at: string; expectedRevision: number }
+  | { type: 'plan/resume-editing'; activityId: string }
+  | { type: 'plan/review-related'; activityId: string; expectedRevision: number }
+  | { type: 'lesson/adopt'; activityId: string; candidate: LessonCandidate; stepIds: string[]; includeStory: boolean }
   | { type: "data/replace"; data: AppData }
   | { type: "activity/create"; activity: Activity }
   | { type: "activity/delete"; activityId: string }
@@ -191,6 +201,79 @@ function editableReflection(s: ClassSession): Reflection | null {
 
 export function reducer(data: AppData, action: Action): AppData {
   switch (action.type) {
+    case 'plan/restore-edit':
+      return withActivity(data,action.activityId,a=>{
+        if(a.draftLocked||a.draft.revision!==action.expectedRevision||a.versions.length!==action.versionCount||a.draft.basedOnVersionNo!==action.draft.basedOnVersionNo)return null;
+        const current=a.draft,restored=structuredClone(action.draft);
+        const goalChanged=JSON.stringify([current.goal.text,current.goal.observe,current.constraints])!==JSON.stringify([restored.goal.text,restored.goal.observe,restored.constraints]);
+        restored.revision=current.revision+1;
+        restored.goal.rev=Math.max(current.goal.rev,restored.goal.rev)+1;
+        restored.goal.confirmed=false;
+        restored.lessonCandidate=undefined;restored.storyCandidate=undefined;
+        for(const s of restored.steps){s.rev=Math.max(s.rev,current.steps.find(x=>x.id===s.id)?.rev??0)+1;s.candidate=undefined;if(s.status==='confirmed')s.status='draft';if(goalChanged&&s.status!=='empty')s.needsReview='撤销或重做更改了教学目标或限制';if(!s.needsReview)s.basedOnGoalRev=restored.goal.rev;}
+        if(restored.story){restored.story.confirmed=false;restored.story.apronConfirmed=false;restored.story.rev=Math.max(restored.story.rev,current.story?.rev??0)+1;for(const sc of restored.story.scenes)sc.suggestedCueIds=undefined;if(goalChanged)restored.story.needsReview='撤销或重做更改了教学目标或限制';}
+        a.draft=restored;return a;
+      });
+    case 'scene/add':
+      return editDraft(data,action.activityId,d=>{
+        const s=findStep(d,action.stepId);
+        if(!d.story||d.story.confirmed||!s||d.story.scenes.some(sc=>sc.stepId===s.id||sc.id===action.sceneId))return false;
+        d.story.scenes.push({id:action.sceneId,stepId:s.id,title:s.fields.title,narration:'',node:{prompt:'',expected:'',allowPause:d.constraints.some(c=>c.kind==='allow-pause')},cueIds:[],rev:0});
+        d.story.rev++;d.story.apronConfirmed=false;
+      });
+    case 'lesson/candidate':
+      return withActivity(data,action.activityId,a=>{
+        if(a.draftLocked||a.draft.revision!==action.candidate.revision||a.draft.lessonCandidate)return null;
+        a.draft.lessonCandidate=structuredClone(action.candidate);return a;
+      });
+    case 'lesson/discard':
+      return withActivity(data,action.activityId,a=>{if(a.draftLocked||!a.draft.lessonCandidate)return null; a.draft.lessonCandidate=undefined;return a;});
+    case 'lesson/adopt':
+      return editDraft(data, action.activityId, d => {
+        const c=action.candidate;
+        if(d.revision!==c.revision||!d.lessonCandidate||checksum(d.lessonCandidate)!==checksum(c)) return false;
+        const chosen=c.steps.filter(s=>action.stepIds.includes(s.stepId));
+        if(!chosen.length&&!action.includeStory)return false;
+        for(const entry of chosen){
+          const s=findStep(d,entry.stepId);
+          const candidate:Candidate={requestId:'lesson',kind:'complete',fields:entry.fields,basedOnStepRev:entry.rev,basedOnGoalRev:d.goal.rev,createdAt:nowIso(),variant:0};
+          if(!s||stepHasContent(s.fields)||s.candidate||candidateRejection(d,false,s.id,candidate))return false;
+        }
+        if(action.includeStory&&(!c.story||d.story||d.storyCandidate))return false;
+        for(const entry of chosen){const s=findStep(d,entry.stepId)!;s.fields={...entry.fields};s.status='draft';s.source='ai';s.rev++;s.basedOnGoalRev=d.goal.rev;}
+        if(chosen.length)markStoryForSteps(d);
+        if(action.includeStory){
+          // Story was composed against all projected steps; partial adoption must not attach it.
+          if(d.steps.some(s=>s.status==='empty'))return false;
+          d.story=structuredClone(c.story!);
+        }
+        d.lessonCandidate=undefined;
+      });
+    case 'plan/review-related':
+      return editDraft(data,action.activityId,d=>{
+        if(d.revision!==action.expectedRevision)return false;
+        const ids=new Set(d.steps.map(s=>s.id));
+        if(d.story?.scenes.some(sc=>!ids.has(sc.stepId)))return false;
+        for(const s of d.steps){s.needsReview=undefined;s.basedOnGoalRev=d.goal.rev;}
+        if(d.story)d.story.needsReview=undefined;
+      });
+    case 'plan/resume-editing': {
+      const a=data.activities.find(a=>a.id===action.activityId);
+      if(!a)return data;
+      const revised=a.draftLocked?reducer(data,{type:'plan/revise',activityId:a.id}):data;
+      return editDraft(revised,a.id,d=>{
+        d.goal.confirmed=false;
+        for(const s of d.steps)if(s.status==='confirmed'){s.status='draft';s.rev++;}
+        if(d.story){d.story.confirmed=false;d.story.apronConfirmed=false;}
+      });
+    }
+    case 'plan/approve-ready': {
+      const a=data.activities.find(a=>a.id===action.activityId);
+      if(!a||a.draftLocked||a.draft.revision!==action.expectedRevision||!preflightReady(a.draft)||a.versions.some(v=>v.id===action.versionId))return data;
+      const prepared={...data,activities:data.activities.map(x=>x.id===a.id?{...x,draft:confirmedForPreflight(x.draft)}:x)};
+      // Delegate to the unchanged approval rule, including its blockingIssues and immutable snapshot.
+      return reducer(prepared,{type:'plan/approve',activityId:a.id,versionId:action.versionId,at:action.at});
+    }
     case "data/replace":
       return action.data;
 

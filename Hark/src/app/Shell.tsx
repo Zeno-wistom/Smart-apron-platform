@@ -39,6 +39,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const { loadStatus, corruptRaw, resetAll, toasts, dismissToast } = useStore();
   return (
     <div className="shell">
+      <a className="skip-link" href="#main-content">跳至主要内容</a>
       <aside className="sidebar" aria-label="主导航">
         <Link to="/" className="brand" aria-label="智能围裙 教师平台 首页">
           <span className="nav-icon-box">
@@ -51,7 +52,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </Link>
         <nav className="nav">
           {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cx("nav-item", isActive && "active")}>
+            <NavLink key={n.to} to={n.to} end={n.end} aria-label={n.label} className={({ isActive }) => cx("nav-item", isActive && "active")}>
               <span className="nav-icon-box">
                 <n.icon className="ico" aria-hidden />
               </span>
@@ -60,16 +61,10 @@ export function Shell({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div className="sidebar-foot">
-          <div className="sim-banner">
-            <FlaskConical className="ico" aria-hidden />
-            <span>
-              原型模式：AI、围裙与课堂数据均为<strong>模拟</strong>，儿童资料为虚构。
-            </span>
-          </div>
-          <div className="sidebar-meta">Hark 版 · P0 原型 v0.1</div>
+          <DemoControls />
         </div>
       </aside>
-      <div className="main">
+      <div className="main" id="main-content" tabIndex={-1}>
         {loadStatus === "corrupt" && <CorruptBanner raw={corruptRaw ?? ""} onReset={resetAll} />}
         {children}
       </div>
@@ -116,8 +111,8 @@ export function Topbar({ children, right }: { children: ReactNode; right?: React
       <div className="topbar-left">{children}</div>
       <div className="topbar-right">
         {right}
+        <span className="prototype-label" title="AI、围裙与课堂均为本地模拟；儿童资料为虚构">原型模拟</span>
         <SaveIndicator />
-        <DemoControls />
       </div>
     </header>
   );
@@ -183,9 +178,10 @@ function DemoControls() {
         icon={FlaskConical}
         aria-expanded={open}
         aria-haspopup="dialog"
+        aria-label="原型工具"
         onClick={() => setOpen((v) => !v)}
       >
-        演示控制{armed ? " · 已设置失败" : ""}
+        原型工具{armed ? " · 已设置失败" : ""}
       </Button>
       {open && (
         <div className="popover" role="dialog" aria-label="演示控制">

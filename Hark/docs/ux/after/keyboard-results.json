@@ -1,0 +1,18 @@
+[
+  {
+    "name": "抽屉 Tab 首尾循环",
+    "ok": true
+  },
+  {
+    "name": "抽屉 Shift+Tab 反向循环",
+    "ok": true
+  },
+  {
+    "name": "Esc 关闭并归还触发按钮焦点",
+    "ok": true
+  },
+  {
+    "name": "仅键盘完成备课至档案闭环",
+    "ok": true
+  }
+]

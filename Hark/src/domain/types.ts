@@ -143,6 +143,8 @@ export interface Story {
 }
 
 export interface PlanDraft {
+  /** Additive UX candidate; absent in v1 data. Never silently applied. */
+  lessonCandidate?: import('./lessonCandidate').LessonCandidate;
   revision: number;
   goal: Goal;
   goalOptions: GoalOption[];

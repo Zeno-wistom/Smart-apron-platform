@@ -4,6 +4,8 @@
  */
 import { blockingIssues, checksum } from "./checks";
 import { emptyStep, nowIso } from "./fixtures";
+import { confirmedForPreflight, preflightReady } from './preflight';
+import type { LessonCandidate } from './lessonCandidate';
 import type {
   Activity,
   AppData,
@@ -26,6 +28,12 @@ import type {
 } from "./types";
 
 export type Action =
+  | { type: 'lesson/candidate'; activityId: string; candidate: LessonCandidate }
+  | { type: 'lesson/discard'; activityId: string }
+  | { type: 'plan/approve-ready'; activityId: string; versionId: string; at: string; expectedRevision: number }
+  | { type: 'plan/resume-editing'; activityId: string }
+  | { type: 'plan/review-related'; activityId: string; expectedRevision: number }
+  | { type: 'lesson/adopt'; activityId: string; candidate: LessonCandidate; stepIds: string[]; includeStory: boolean }
   | { type: "data/replace"; data: AppData }
   | { type: "activity/create"; activity: Activity }
   | { type: "activity/delete"; activityId: string }
@@ -191,6 +199,59 @@ function editableReflection(s: ClassSession): Reflection | null {
 
 export function reducer(data: AppData, action: Action): AppData {
   switch (action.type) {
+    case 'lesson/candidate':
+      return withActivity(data,action.activityId,a=>{
+        if(a.draftLocked||a.draft.revision!==action.candidate.revision||a.draft.lessonCandidate)return null;
+        a.draft.lessonCandidate=structuredClone(action.candidate);return a;
+      });
+    case 'lesson/discard':
+      return withActivity(data,action.activityId,a=>{if(a.draftLocked||!a.draft.lessonCandidate)return null; a.draft.lessonCandidate=undefined;return a;});
+    case 'lesson/adopt':
+      return editDraft(data, action.activityId, d => {
+        const c=action.candidate;
+        if(d.revision!==c.revision||!d.lessonCandidate||checksum(d.lessonCandidate)!==checksum(c)) return false;
+        const chosen=c.steps.filter(s=>action.stepIds.includes(s.stepId));
+        if(!chosen.length&&!action.includeStory)return false;
+        for(const entry of chosen){
+          const s=findStep(d,entry.stepId);
+          const candidate:Candidate={requestId:'lesson',kind:'complete',fields:entry.fields,basedOnStepRev:entry.rev,basedOnGoalRev:d.goal.rev,createdAt:nowIso(),variant:0};
+          if(!s||stepHasContent(s.fields)||s.candidate||candidateRejection(d,false,s.id,candidate))return false;
+        }
+        if(action.includeStory&&(!c.story||d.story||d.storyCandidate))return false;
+        for(const entry of chosen){const s=findStep(d,entry.stepId)!;s.fields={...entry.fields};s.status='draft';s.source='ai';s.rev++;s.basedOnGoalRev=d.goal.rev;}
+        if(chosen.length)markStoryForSteps(d);
+        if(action.includeStory){
+          // Story was composed against all projected steps; partial adoption must not attach it.
+          if(d.steps.some(s=>s.status==='empty'))return false;
+          d.story=structuredClone(c.story!);
+        }
+        d.lessonCandidate=undefined;
+      });
+    case 'plan/review-related':
+      return editDraft(data,action.activityId,d=>{
+        if(d.revision!==action.expectedRevision)return false;
+        const ids=new Set(d.steps.map(s=>s.id));
+        if(d.story?.scenes.some(sc=>!ids.has(sc.stepId)))return false;
+        for(const s of d.steps){s.needsReview=undefined;s.basedOnGoalRev=d.goal.rev;}
+        if(d.story)d.story.needsReview=undefined;
+      });
+    case 'plan/resume-editing': {
+      const a=data.activities.find(a=>a.id===action.activityId);
+      if(!a)return data;
+      const revised=a.draftLocked?reducer(data,{type:'plan/revise',activityId:a.id}):data;
+      return editDraft(revised,a.id,d=>{
+        d.goal.confirmed=false;
+        for(const s of d.steps)if(s.status==='confirmed'){s.status='draft';s.rev++;}
+        if(d.story){d.story.confirmed=false;d.story.apronConfirmed=false;}
+      });
+    }
+    case 'plan/approve-ready': {
+      const a=data.activities.find(a=>a.id===action.activityId);
+      if(!a||a.draftLocked||a.draft.revision!==action.expectedRevision||!preflightReady(a.draft)||a.versions.some(v=>v.id===action.versionId))return data;
+      const prepared={...data,activities:data.activities.map(x=>x.id===a.id?{...x,draft:confirmedForPreflight(x.draft)}:x)};
+      // Delegate to the unchanged approval rule, including its blockingIssues and immutable snapshot.
+      return reducer(prepared,{type:'plan/approve',activityId:a.id,versionId:action.versionId,at:action.at});
+    }
     case "data/replace":
       return action.data;
 

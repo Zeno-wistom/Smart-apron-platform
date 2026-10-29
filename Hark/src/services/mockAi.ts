@@ -357,13 +357,14 @@ export function simulateSession(version: PlanVersion): ClassSession {
   snap.steps.forEach((s) => {
     const scene = snap.story?.scenes.find((sc) => sc.stepId === s.id);
     push({ stepId: s.id, sceneId: scene?.id, kind: "start", text: `开始「${s.fields.title}」` }, 30);
-    for (const cid of scene?.cueIds ?? []) {
+    const interaction = snap.courseFlow?.interactions[s.id];
+    for (const cid of interaction?.cueIds ?? scene?.cueIds ?? []) {
       const cue = cueById(cid);
       if (cue) push({ stepId: s.id, sceneId: scene?.id, kind: "cue", text: `教师触发：${cue.name}` }, 15);
     }
     if (s.role === "practice") {
       push({ stepId: s.id, sceneId: scene?.id, kind: "response", text: "第 1 轮：提示后回应（模拟）" }, 25);
-      if (scene?.node.allowPause) push({ stepId: s.id, sceneId: scene.id, kind: "pause", text: "儿童示意暂停，教师等待约 20 秒后继续（模拟）" }, 40);
+      if (interaction?.allowPause ?? scene?.node.allowPause) push({ stepId: s.id, sceneId: scene?.id, kind: "pause", text: "儿童示意暂停，教师等待约 20 秒后继续（模拟）" }, 40);
       push({ stepId: s.id, sceneId: scene?.id, kind: "response", text: "第 2 轮：独立回应（模拟）" }, 25);
     } else if (s.role === "fade") {
       push({ stepId: s.id, sceneId: scene?.id, kind: "response", text: "仅视觉提示：未观察到回应，补充口头提示后回应（模拟）" }, 30);

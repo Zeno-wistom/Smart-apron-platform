@@ -37,6 +37,7 @@ export function PlanDocument({ plan, issueStepIds = new Set<string>() }: { plan:
         </div>
         <ol className="doc-steps">
           {plan.steps.map((s, i) => {
+            const interaction = plan.courseFlow?.interactions[s.id];
             const sc = plan.story?.scenes.find((x) => x.stepId === s.id);
             return (
               <li key={s.id} id={`doc-${s.id}`} className={issueStepIds.has(s.id) ? "has-issue" : ""}>
@@ -59,6 +60,7 @@ export function PlanDocument({ plan, issueStepIds = new Set<string>() }: { plan:
                         <dd>{s.fields.observe}</dd>
                       </>
                     )}
+                    {interaction && <><dt>故事讲述</dt><dd>{plan.courseFlow?.outline.find(o=>o.id===s.id)?.story ? interaction.narration : '本活动不使用故事'}</dd><dt>围裙互动（模拟）</dt><dd>{interaction.cueIds.map(id=>{const c=cueById(id);return c?`${c.name}（${c.trigger==='teacher'?'教师触发':'自动'}）`:'未知提示';}).join('、')||'不使用反馈'} · {interaction.allowPause?'允许暂停':'未允许暂停'}</dd></>}
                     {sc && (
                       <>
                         <dt>故事场景</dt>
@@ -93,6 +95,7 @@ export function PlanDocument({ plan, issueStepIds = new Set<string>() }: { plan:
           })}
         </ol>
       </section>
+      {plan.courseFlow?.story && <section className="doc-sec"><div className="doc-label">故事《{plan.courseFlow.story.title}》</div><p>{plan.courseFlow.story.summary}</p></section>}
       {plan.story && (
         <section className="doc-sec">
           <div className="doc-label">故事《{plan.story.title}》</div>

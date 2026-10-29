@@ -1,3 +1,4 @@
+import { courseIssues } from './courseChecks';
 import { blockingIssues, planIssues } from "./checks";
 import { cueById } from "./fixtures";
 import type { PlanDraft } from "./types";
@@ -14,6 +15,7 @@ export function confirmedForPreflight(draft: PlanDraft): PlanDraft {
   return d;
 }
 export function preflightIssues(d: PlanDraft) {
+  if(d.courseFlow) return courseIssues(d);
   const normalized = confirmedForPreflight(d);
   const issues = planIssues(normalized);
   const add = (

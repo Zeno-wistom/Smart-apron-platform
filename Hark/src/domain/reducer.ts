@@ -1,3 +1,4 @@
+import { courseReducer, type CourseAction } from './courseFlow';
 /**
  * 集中的业务规则。页面只派发 action，所有“能不能改”的判断都在这里。
  * 每个 guard 不通过时返回原 state（不抛错），由调用方通过 select* 函数预先判断给出提示。
@@ -27,7 +28,7 @@ import type {
   TransferAttempt,
 } from "./types";
 
-export type Action =
+export type Action = CourseAction
   | { type:'plan/restore-edit'; activityId:string; draft:PlanDraft; expectedRevision:number; versionCount:number }
   | { type:'scene/add'; activityId:string; stepId:string; sceneId:string }
   | { type: 'lesson/candidate'; activityId: string; candidate: LessonCandidate }
@@ -200,6 +201,7 @@ function editableReflection(s: ClassSession): Reflection | null {
 /* ------------------------------------------------------------------ */
 
 export function reducer(data: AppData, action: Action): AppData {
+  if (action.type.startsWith("course/")) return courseReducer(data, action as CourseAction);
   switch (action.type) {
     case 'plan/restore-edit':
       return withActivity(data,action.activityId,a=>{

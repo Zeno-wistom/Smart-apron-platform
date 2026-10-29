@@ -1,3 +1,4 @@
+import { CoursePage } from '../plan/CoursePage';
 import { useEffect, useState } from "react";
 import {
   Link,
@@ -30,6 +31,7 @@ export function ActivityPage() {
     if (!activity) return;
     if (raw === "story" || raw === "review") {
       const next = new URLSearchParams(params);
+      if (raw === "review" && activity.draft.courseFlow && !next.get("version")) { nav(`/activities/${activity.id}/plan`, {replace:true}); return; }
       if (raw === "review") {
         if (next.get("version")) {
           setVersionId(next.get("version")!);
@@ -79,7 +81,7 @@ export function ActivityPage() {
                 课堂与复盘
               </button>
             </nav>
-            {mode === "plan" && (
+            {mode === "plan" && !activity.draft.courseFlow && (
               <Button
                 variant="primary"
                 onClick={() => setPreflight(true)}
@@ -149,7 +151,7 @@ export function ActivityPage() {
         )}
       </div>
       {mode === "plan" ? (
-        <PreparationWorkspace
+        activity.draft.courseFlow ? <CoursePage activity={activity} child={child} /> : <PreparationWorkspace
           key={activity.id}
           activity={activity}
           child={child}

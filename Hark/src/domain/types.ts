@@ -142,7 +142,18 @@ export interface Story {
   rev: number;
 }
 
+export interface CourseOutlineItem { id: string; title: string; purpose: string; minutes: number; story: boolean; role: Step["role"] }
+export interface CourseInteraction { cueIds: string[]; allowPause: boolean; narration: string }
+export interface CourseFlow {
+  stage: 'goal' | 'outline' | 'document' | 'review';
+  outline: CourseOutlineItem[];
+  interactions: Record<string, CourseInteraction>;
+  expanded: boolean;
+  story?: Pick<Story, 'title' | 'summary' | 'characters'>;
+  candidate?: { revision: number; kind: 'outline' | 'detail'; outline?: CourseOutlineItem[]; steps?: Step[]; interactions?: Record<string, CourseInteraction>; story?: Pick<Story, 'title' | 'summary' | 'characters'> };
+}
 export interface PlanDraft {
+  courseFlow?: CourseFlow;
   /** Additive UX candidate; absent in v1 data. Never silently applied. */
   lessonCandidate?: import('./lessonCandidate').LessonCandidate;
   revision: number;

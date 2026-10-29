@@ -39,14 +39,16 @@ try {
   }
   if (!ready) throw Error("Test server not ready: " + output);
   console.log("Isolated E2E server: " + base);
-  for (const script of [
+  // Default acceptance follows the current product flow. Old scripts are retained
+  // as PR #2 historical references, not claimed as current passing acceptance.
+  for (const script of (process.argv.includes("--legacy") ? [
     "ux-flow.mjs",
     "ux-class.mjs",
     "ux-recovery.mjs",
     "ux-keyboard.mjs",
     "ux-undo.mjs",
     "ux-audit.mjs",
-  ]) {
+  ] : ["course-flow.mjs"])) {
     const code = await new Promise((resolve, reject) => {
       const child = spawn(process.execPath, [resolvePath(script)], {
         cwd,

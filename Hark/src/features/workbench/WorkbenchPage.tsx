@@ -9,6 +9,7 @@ import type { Activity, Stage } from "../../domain/types";
 
 export function nextAction(a: Activity): { label: string; stage: Stage } {
   const phase = activityPhase(a).key;
+  if(a.draft.courseFlow && phase === "approved") return {label:"查看完成的教案与模拟传输",stage:"plan"};
   if (phase === "planning") return { label: "继续备课", stage: "plan" };
   if (phase === "approved") return { label: "准备上课", stage: "review" };
   return {
@@ -29,6 +30,8 @@ export function WorkbenchPage() {
   const recent = sorted.filter((a) => a.id !== resume?.id);
   const create = () => {
     const a = newActivity(data.children[0], "未命名活动");
+    a.draft.steps=[];
+    a.draft.courseFlow={stage:"goal",outline:[],interactions:{},expanded:false};
     dispatch({ type: "activity/create", activity: a });
     nav(`/activities/${a.id}/plan?focus=goal`);
   };
@@ -44,7 +47,7 @@ export function WorkbenchPage() {
             <h1>教学工作台</h1>
           </div>
           <Button variant="primary" icon={Plus} onClick={create}>
-            新建教学活动
+            准备一堂课
           </Button>
         </div>
         {resume ? (
@@ -66,8 +69,8 @@ export function WorkbenchPage() {
           </section>
         ) : (
           <section className="resume-paper empty">
-            <h2>准备下一节课</h2>
-            <p>新建活动后，将自动带入{data.children[0].name}的感官限制。</p>
+            <h2>从目标开始，完成一份可以上课的教案</h2>
+            <p>为{data.children[0].name}备课：确定目标 → 安排整堂课 → 完善教案 → 审核完成。AI 与围裙均为模拟。</p>
           </section>
         )}
         <section className="recent-lessons">

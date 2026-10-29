@@ -1,3 +1,4 @@
+import { courseIssues } from './courseChecks';
 import { cueById, ROLE_LABEL } from "./fixtures";
 import type { Activity, Constraint, PlanDraft, Scene } from "./types";
 
@@ -38,6 +39,7 @@ export function sceneConflicts(scene: Scene, constraints: Constraint[]): string[
 
 /** 汇总教案批准前的所有问题。block 级问题会阻止批准。 */
 export function planIssues(draft: PlanDraft): Issue[] {
+  if (draft.courseFlow) return courseIssues(draft);
   const issues: Issue[] = [];
   const g = draft.goal;
   if (!g.text.trim()) {
